@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { FiMail, FiLock, FiAlertCircle, FiBriefcase } from 'react-icons/fi';
+import { FiUser, FiLock, FiAlertCircle, FiBriefcase } from 'react-icons/fi';
 
 const Login = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
   
-  const [email, setEmail] = useState('');
+  const [emailOrUsername, setEmailOrUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -18,11 +18,11 @@ const Login = () => {
     setIsLoading(true);
 
     try {
-      const result = await login(email, password);
+      const result = await login(emailOrUsername, password);
       if (result.success) {
         navigate('/homepage');
       } else {
-        setError(result.message || 'Invalid email or password.');
+        setError(result.message || 'Invalid username/email or password.');
       }
     } catch (err) {
       setError('An error occurred. Please try again.');
@@ -63,22 +63,22 @@ const Login = () => {
         <form className="mt-6 space-y-6" onSubmit={handleSubmit}>
           <div className="space-y-4">
             <div>
-              <label htmlFor="email" className="block text-sm font-semibold text-slate-700 mb-1.5">
-                Email Address
+              <label htmlFor="emailOrUsername" className="block text-sm font-semibold text-slate-700 mb-1.5">
+                Username or Email Address
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
-                  <FiMail className="w-5 h-5" />
+                  <FiUser className="w-5 h-5" />
                 </div>
                 <input
-                  id="email"
-                  name="email"
-                  type="email"
+                  id="emailOrUsername"
+                  name="emailOrUsername"
+                  type="text"
                   required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  value={emailOrUsername}
+                  onChange={(e) => setEmailOrUsername(e.target.value)}
                   className="block w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white transition-all text-sm"
-                  placeholder="name@example.com"
+                  placeholder="Enter username or email"
                 />
               </div>
             </div>

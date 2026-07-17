@@ -37,18 +37,32 @@ const signup = async (req, res) => {
   }
 };
 
-// @desc    User login
-// @route   POST /api/auth/login
 const login = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, username, emailOrUsername, password } = req.body;
     
-    // Find user by email
-    const user = await User.findOne({ email });
+    const loginIdentifier = emailOrUsername || email || username;
+    
+    if (!loginIdentifier) {
+      return res.status(400).json({
+        success: false,
+        message: 'Username or email is required'
+      });
+    }
+    
+    // Find user by email or username (case-insensitive)
+    const escapedIdentifier = loginIdentifier.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+    const user = await User.findOne({
+      $or: [
+        { email: { $regex: new RegExp(`^${escapedIdentifier}$`, 'i') } },
+        { username: { $regex: new RegExp(`^${escapedIdentifier}$`, 'i') } }
+      ]
+    });
+    
     if (!user) {
       return res.status(401).json({ 
         success: false, 
-        message: 'Invalid email or password' 
+        message: 'Invalid username/email or password' 
       });
     }
     
@@ -57,7 +71,7 @@ const login = async (req, res) => {
     if (!isMatch) {
       return res.status(401).json({ 
         success: false, 
-        message: 'Invalid email or password' 
+        message: 'Invalid username/email or password' 
       });
     }
     
