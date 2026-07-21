@@ -1,35 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useCartStore } from '../store/useCartStore';
 import { FiTrash2, FiVideo, FiFileText, FiPlusCircle, FiAlertCircle } from 'react-icons/fi';
 
 const Cart = () => {
-  const [cartItems, setCartItems] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState('');
+  const cartItems = useCartStore((state) => state.cartItems);
+  const isLoading = useCartStore((state) => state.isLoading);
+  const fetchCart = useCartStore((state) => state.fetchCart);
+  const removeItem = useCartStore((state) => state.removeItem);
 
-  const fetchCart = async () => {
-    setIsLoading(true);
-    setError('');
-    try {
-      const response = await fetch('/api/cart');
-      if (response.status === 401) {
-        setError('Your session has expired. Please sign in again.');
-        return;
-      }
-      
-      const data = await response.json();
-      if (data.success && Array.isArray(data.cart)) {
-        setCartItems(data.cart);
-      } else {
-        throw new Error(data.error || 'Failed to retrieve application records');
-      }
-    } catch (err) {
-      console.error('Error fetching applications cart:', err);
-      setError(err.message || 'Failed to fetch cart details.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  const [error, setError] = useState('');
 
   const hasFetchedRef = React.useRef(false);
 
@@ -40,21 +20,7 @@ const Cart = () => {
   }, []);
 
   const handleRemoveItem = async (companyId) => {
-    try {
-      const response = await fetch(`/api/cart/${companyId}`, {
-        method: 'DELETE'
-      });
-      const data = await response.json();
-      if (data.success) {
-        // Reload cart
-        fetchCart();
-      } else {
-        alert(data.error || 'Failed to remove application.');
-      }
-    } catch (err) {
-      console.error('Error deleting application:', err);
-      alert('An error occurred. Please try again.');
-    }
+    await removeItem(companyId);
   };
 
   const handleClearCart = async () => {

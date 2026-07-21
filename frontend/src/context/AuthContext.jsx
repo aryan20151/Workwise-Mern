@@ -1,12 +1,13 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useEffect } from 'react';
 import { useUser, useClerk } from '@clerk/clerk-react';
+import { useAuthStore } from '../store/useAuthStore';
 
 const AuthContext = createContext(null);
 
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 const isClerkEnabled = Boolean(PUBLISHABLE_KEY && PUBLISHABLE_KEY !== 'pk_test_placeholder' && PUBLISHABLE_KEY.length > 20);
 
-// Inner Subscriber Component that listens to Clerk hooks
+// Subscriber Component listening to Clerk hooks and syncing with Zustand store
 const ClerkSubscriber = ({ onClerkState }) => {
   const { isLoaded, isSignedIn, user } = useUser();
   const { signOut } = useClerk();
@@ -19,18 +20,22 @@ const ClerkSubscriber = ({ onClerkState }) => {
 };
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [clerkState, setClerkState] = useState({ isLoaded: false, isSignedIn: false, user: null, signOut: null });
+  const user = useAuthStore((state) => state.user);
+  const loading = useAuthStore((state) => state.loading);
+  const clerkState = useAuthStore((state) => state.clerkState);
+  const setUser = useAuthStore((state) => state.setUser);
+  const setLoading = useAuthStore((state) => state.setLoading);
+  const setClerkState = useAuthStore((state) => state.setClerkState);
+  const logout = useAuthStore((state) => state.logout);
+
   const syncedClerkIdRef = React.useRef(null);
 
-  // Sync Clerk user with AuthContext when Clerk state updates
+  // Sync Clerk state with Zustand Auth Store
   useEffect(() => {
     if (isClerkEnabled) {
       const { isLoaded, isSignedIn, user: clerkUser } = clerkState;
       if (isLoaded) {
         if (isSignedIn && clerkUser) {
-          // Avoid duplicate google-sync API requests if already synced for this user ID
           if (syncedClerkIdRef.current === clerkUser.id && user) {
             setLoading(false);
             return;
@@ -40,7 +45,6 @@ export const AuthProvider = ({ children }) => {
           const userEmail = clerkUser.primaryEmailAddress?.emailAddress;
           const userUsername = clerkUser.fullName || clerkUser.firstName || userEmail?.split('@')[0] || 'User';
 
-          // Sync Google user with backend MongoDB Atlas (runs ONCE)
           fetch('/api/auth/google-sync', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -59,7 +63,6 @@ export const AuthProvider = ({ children }) => {
               avatar: clerkUser.imageUrl
             };
             setUser(formattedUser);
-            localStorage.setItem('workwise_user', JSON.stringify(formattedUser));
           })
           .catch(err => {
             console.error('Error syncing Google user with Mongo:', err);
@@ -90,16 +93,13 @@ export const AuthProvider = ({ children }) => {
         const data = await response.json();
         if (data.authenticated && data.user) {
           setUser(data.user);
-          localStorage.setItem('workwise_user', JSON.stringify(data.user));
         } else {
           setUser(null);
-          localStorage.removeItem('workwise_user');
         }
       }
     } catch (error) {
       console.error('Error verifying session status:', error);
       setUser(null);
-      localStorage.removeItem('workwise_user');
     } finally {
       setLoading(false);
     }
@@ -116,7 +116,6 @@ export const AuthProvider = ({ children }) => {
       const data = await response.json();
       if (data.success && data.user) {
         setUser(data.user);
-        localStorage.setItem('workwise_user', JSON.stringify(data.user));
         return { success: true };
       } else {
         return { success: false, message: data.message || 'Login failed' };
@@ -148,23 +147,6 @@ export const AuthProvider = ({ children }) => {
       return { success: false, message: 'An error occurred. Please try again.' };
     } finally {
       setLoading(false);
-    }
-  };
-
-  const logout = async () => {
-    setLoading(true);
-    try {
-      if (clerkState.signOut) {
-        await clerkState.signOut();
-      }
-      await fetch('/api/auth/logout', { method: 'POST' });
-    } catch (error) {
-      console.error('Logout error:', error);
-    } finally {
-      setUser(null);
-      localStorage.removeItem('workwise_user');
-      setLoading(false);
-      return true;
     }
   };
 

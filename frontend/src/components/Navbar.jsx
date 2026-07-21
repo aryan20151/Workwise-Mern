@@ -1,34 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useCartStore } from '../store/useCartStore';
 import { FiShoppingCart, FiUser, FiLogOut, FiMenu, FiX, FiBriefcase } from 'react-icons/fi';
 
 const Navbar = () => {
   const { user, logout } = useAuth();
+  const cartCount = useCartStore((state) => state.cartCount);
+  const fetchCart = useCartStore((state) => state.fetchCart);
+  
   const navigate = useNavigate();
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [cartCount, setCartCount] = useState(0);
 
-  const fetchCartCount = async () => {
-    if (!user) return;
-    try {
-      const response = await fetch('/api/cart');
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.cart) {
-          setCartCount(data.cart.length);
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching cart count:', error);
-    }
-  };
-
-  // Re-fetch cart count on location change
+  // Re-fetch cart count on location change via Zustand store
   useEffect(() => {
-    fetchCartCount();
+    if (user) {
+      fetchCart();
+    }
     setIsOpen(false);
     setDropdownOpen(false);
   }, [location.pathname, user]);
