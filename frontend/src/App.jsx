@@ -1,5 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthenticateWithRedirectCallback } from '@clerk/clerk-react';
 import { AuthProvider } from './context/AuthContext';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
@@ -21,6 +22,9 @@ function App() {
           <Navbar />
           <main className="flex-grow">
             <Routes>
+              {/* Clerk SSO Callback Route */}
+              <Route path="/sso-callback" element={<AuthenticateWithRedirectCallback signUpForceRedirectUrl="/homepage" signInForceRedirectUrl="/homepage" />} />
+
               {/* Public Routes */}
               <Route element={<PublicRoute />}>
                 <Route path="/login" element={<Login />} />

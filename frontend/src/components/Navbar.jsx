@@ -101,29 +101,44 @@ const Navbar = () => {
                     onClick={() => setDropdownOpen(!dropdownOpen)}
                     className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-slate-200 hover:border-blue-500 text-slate-700 transition-colors"
                   >
-                    <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-slate-600">
-                      <FiUser className="w-3.5 h-3.5" />
-                    </div>
+                    {user.avatar ? (
+                      <img src={user.avatar} alt={user.username} className="w-6 h-6 rounded-full object-cover border border-slate-200" />
+                    ) : (
+                      <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-slate-600">
+                        <FiUser className="w-3.5 h-3.5" />
+                      </div>
+                    )}
                     <span className="text-sm font-semibold max-w-[100px] truncate">
                       {user.username}
                     </span>
                   </button>
 
                   {dropdownOpen && (
-                    <div className="absolute right-0 mt-2 w-48 bg-white border border-slate-150 rounded-xl shadow-xl py-1 animate-in fade-in slide-in-from-top-2 duration-150">
-                      <div className="px-4 py-2 border-b border-slate-100">
-                        <p className="text-xs text-slate-400">Signed in as</p>
-                        <p className="text-sm font-bold text-slate-700 truncate">
-                          {user.username}
-                        </p>
+                    <div className="absolute right-0 mt-2 w-52 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150 z-50">
+                      <div className="px-4 py-3 bg-slate-50/80 border-b border-slate-100 flex items-center gap-3">
+                        {user.avatar ? (
+                          <img src={user.avatar} alt={user.username} className="w-9 h-9 rounded-full object-cover border border-slate-200 shadow-sm" />
+                        ) : (
+                          <div className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-slate-600">
+                            <FiUser className="w-4 h-4" />
+                          </div>
+                        )}
+                        <div className="overflow-hidden">
+                          <p className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">Signed in as</p>
+                          <p className="text-sm font-bold text-slate-800 truncate">
+                            {user.username}
+                          </p>
+                        </div>
                       </div>
-                      <button
-                        onClick={handleLogout}
-                        className="w-full text-left px-4 py-2.5 text-sm text-rose-600 hover:bg-rose-50 flex items-center gap-2 font-medium"
-                      >
-                        <FiLogOut className="w-4 h-4" />
-                        Sign Out
-                      </button>
+                      <div className="p-1">
+                        <button
+                          onClick={handleLogout}
+                          className="w-full text-left px-3.5 py-2 text-sm text-rose-600 hover:bg-rose-50/80 rounded-lg flex items-center gap-2.5 font-semibold transition-colors duration-150"
+                        >
+                          <FiLogOut className="w-4 h-4 text-rose-500" />
+                          <span>Sign Out</span>
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -201,9 +216,18 @@ const Navbar = () => {
 
           {user ? (
             <div className="border-t border-slate-100 pt-3 mt-3">
-              <div className="px-4 py-2">
-                <p className="text-xs text-slate-400">Logged in as</p>
-                <p className="text-sm font-bold text-slate-700 truncate">{user.username}</p>
+              <div className="px-4 py-2 flex items-center gap-3">
+                {user.avatar ? (
+                  <img src={user.avatar} alt={user.username} className="w-9 h-9 rounded-full object-cover border border-slate-200" />
+                ) : (
+                  <div className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-slate-600">
+                    <FiUser className="w-5 h-5" />
+                  </div>
+                )}
+                <div>
+                  <p className="text-xs text-slate-400">Logged in as</p>
+                  <p className="text-sm font-bold text-slate-700 truncate">{user.username}</p>
+                </div>
               </div>
               <button
                 onClick={handleLogout}

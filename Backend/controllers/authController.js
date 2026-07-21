@@ -182,10 +182,61 @@ const getUserDetails = async (req, res) => {
     }
 };
 
+// @desc    Sync or create Google user in MongoDB Atlas
+const googleSync = async (req, res) => {
+  try {
+    const { email, username, clerkId } = req.body;
+    
+    if (!email) {
+      return res.status(400).json({ success: false, message: 'Email is required' });
+    }
+    
+    // Check if user already exists in MongoDB Atlas by email
+    let user = await User.findOne({ email: { $regex: new RegExp(`^${email.trim()}$`, 'i') } });
+    
+    if (!user) {
+      // Generate unique base username if needed
+      let baseUsername = (username || email.split('@')[0]).replace(/[^a-zA-Z0-9_]/g, '');
+      let uniqueUsername = baseUsername;
+      let counter = 1;
+      while (await User.findOne({ username: uniqueUsername })) {
+        uniqueUsername = `${baseUsername}${counter++}`;
+      }
+      
+      user = new User({
+        username: uniqueUsername,
+        email: email,
+        password: clerkId || `clerk_google_${Date.now()}`
+      });
+      
+      await user.save();
+      console.log('✅ New Google user saved to MongoDB Atlas:', user.email);
+    }
+    
+    // Save session in Express
+    req.session.userId = user._id;
+    req.session.username = user.username;
+    
+    res.status(200).json({
+      success: true,
+      message: 'User synced with MongoDB Atlas',
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email
+      }
+    });
+  } catch (err) {
+    console.error('Error syncing Google user to MongoDB:', err);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
 module.exports = {
   signup,
   login,
   logout,
   checkStatus,
-  getUserDetails
+  getUserDetails,
+  googleSync
 };
