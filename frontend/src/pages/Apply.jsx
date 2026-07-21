@@ -196,10 +196,17 @@ const Apply = () => {
       const fileData = new FormData();
       fileData.append('resume', resumeFile);
 
-      const fileResponse = await fetch('/upload-resume', {
+      let fileResponse = await fetch('/api/upload-resume', {
         method: 'POST',
         body: fileData
       });
+
+      if (!fileResponse.ok) {
+        fileResponse = await fetch('/upload-resume', {
+          method: 'POST',
+          body: fileData
+        });
+      }
 
       if (!fileResponse.ok) {
         const text = await fileResponse.text();

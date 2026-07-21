@@ -22,7 +22,10 @@ if (!fs.existsSync(uploadsDir)) {
 
 const storage = multer.diskStorage({
     destination: (req, file, cb) => cb(null, uploadsDir),
-    filename: (req, file, cb) => cb(null, Date.now() + "-" + file.originalname)
+    filename: (req, file, cb) => {
+        const cleanName = (file.originalname || 'resume.pdf').replace(/[^a-zA-Z0-9.-]/g, '_');
+        cb(null, Date.now() + "-" + cleanName);
+    }
 });
 const upload = multer({ storage });
 
@@ -32,9 +35,9 @@ router.post('/api/cart', addToCart);
 router.delete('/api/cart/:companyId', removeFromCart);
 router.delete('/api/cart', clearCart);
 
-// Resume upload route
-router.post('/upload-resume', upload.single('resume'), (req, res) => {
-  console.log("Resume upload request received");
+// Resume upload handler
+const handleResumeUpload = (req, res) => {
+  console.log("Resume upload request received:", req.file?.originalname);
   try {
     if (!req.file) {
       console.error("No file uploaded in request");
@@ -44,7 +47,7 @@ router.post('/upload-resume', upload.single('resume'), (req, res) => {
       });
     }
     
-    console.log("File uploaded successfully:", req.file);
+    console.log("File uploaded successfully:", req.file.filename);
     res.status(200).json({ 
       success: true, 
       filename: req.file.filename 
@@ -56,7 +59,11 @@ router.post('/upload-resume', upload.single('resume'), (req, res) => {
       error: "Internal server error: " + err.message 
     });
   }
-});
+};
+
+// Resume upload routes (supports both /upload-resume and /api/upload-resume)
+router.post('/upload-resume', upload.single('resume'), handleResumeUpload);
+router.post('/api/upload-resume', upload.single('resume'), handleResumeUpload);
 
 // Apply redirect routes (legacy)
 router.post('/apply', applyRedirect);
