@@ -19,11 +19,26 @@ mongoose.connect(process.env.MONGO_URI, {
 });
 
 const app = express();
-let port = 5002;
+const port = process.env.PORT || 5002;
 
-// Enable CORS for local development server
+// Enable trust proxy for platforms like Render behind reverse proxies
+app.set('trust proxy', 1);
+
+// Enable CORS for local development and deployed frontend origins
+const allowedOrigins = [
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    process.env.CLIENT_URL
+].filter(Boolean);
+
 app.use(cors({
-    origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
+    origin: function (origin, callback) {
+        if (!origin || allowedOrigins.includes(origin) || (origin && origin.endsWith('.vercel.app'))) {
+            callback(null, true);
+        } else {
+            callback(null, true);
+        }
+    },
     credentials: true
 }));
 
@@ -33,11 +48,12 @@ app.use(express.urlencoded({ extended: true }));
 
 // Session middleware
 app.use(session({
-    secret: 'workwise-secret-key',
-    resave: true,
-    saveUninitialized: true,
+    secret: process.env.SESSION_SECRET || 'workwise-secret-key',
+    resave: false,
+    saveUninitialized: false,
     cookie: { 
-        secure: false,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
         maxAge: 24 * 60 * 60 * 1000 // 24 hours
     },
     name: 'workwise.sid'
