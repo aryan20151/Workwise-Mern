@@ -12,7 +12,11 @@ const Companies = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
 
+  const hasFetchedRef = React.useRef(false);
+
   useEffect(() => {
+    if (hasFetchedRef.current) return;
+    hasFetchedRef.current = true;
     fetchCompanies();
   }, []);
 
@@ -124,7 +128,12 @@ const Companies = () => {
   };
 
   const handleApplyClick = (company) => {
-    navigate(`/apply?companyId=${company.companyId}&companyName=${encodeURIComponent(company.name)}`);
+    navigate('/apply', {
+      state: {
+        companyId: company.companyId,
+        companyName: company.name
+      }
+    });
   };
 
   return (
@@ -217,7 +226,7 @@ const Companies = () => {
               </button>
             </div>
           ) : (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
               {filteredCompanies.map((company) => {
                 const isExpanded = expandedId === company.companyId;
                 return (

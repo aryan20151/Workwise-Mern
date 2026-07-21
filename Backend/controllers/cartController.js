@@ -1,12 +1,42 @@
 const Application = require('../models/Application');
 const Company = require('../models/Company');
+const User = require('../models/User');
+
+// Helper to resolve user ID from session or email
+const resolveUserId = async (req, emailFromReq) => {
+  if (req.session && req.session.userId) {
+    return req.session.userId;
+  }
+
+  const email = emailFromReq || req.query?.email || req.body?.email;
+  if (email) {
+    let user = await User.findOne({ email: { $regex: new RegExp(`^${email.trim()}$`, 'i') } });
+    if (!user) {
+      let baseUsername = email.split('@')[0].replace(/[^a-zA-Z0-9_]/g, '');
+      user = new User({
+        username: baseUsername,
+        email: email,
+        password: `clerk_user_${Date.now()}`
+      });
+      await user.save();
+    }
+    if (req.session) {
+      req.session.userId = user._id;
+      req.session.username = user.username;
+    }
+    return user._id;
+  }
+
+  return null;
+};
 
 // @desc    Get user's applications cart
 // @route   GET /api/cart
 const getCart = async (req, res) => {
     try {
-        // Check if user is authenticated
-        if (!req.session || !req.session.userId) {
+        const userId = await resolveUserId(req);
+        
+        if (!userId) {
             console.log('User not authenticated for cart access');
             return res.status(401).json({ 
                 success: false, 
@@ -14,9 +44,9 @@ const getCart = async (req, res) => {
             });
         }
 
-        console.log('Fetching cart for user:', req.session.userId);
+        console.log('Fetching cart for user:', userId);
         const applications = await Application.find({ 
-            userId: req.session.userId 
+            userId: userId 
         }).sort({ createdAt: -1 });
         
         console.log(`Found ${applications.length} applications in cart`);
@@ -37,17 +67,18 @@ const getCart = async (req, res) => {
 // @route   POST /api/cart
 const addToCart = async (req, res) => {
     try {
-        // Check if user is authenticated
-        if (!req.session || !req.session.userId) {
+        const { companyId, companyName, name, email, resumePath } = req.body;
+        console.log("Adding to cart:", { companyId, companyName, name, email });
+
+        const userId = await resolveUserId(req, email);
+
+        if (!userId) {
             console.log('User not authenticated for cart addition');
             return res.status(401).json({ 
                 success: false, 
                 error: "User not authenticated" 
             });
         }
-
-        const { companyId, companyName, name, email, resumePath } = req.body;
-        console.log("Adding to cart:", { companyId, companyName, name, email });
 
         // Validate required fields
         if (!companyId || !companyName || !name || !email || !resumePath) {
@@ -73,7 +104,7 @@ const addToCart = async (req, res) => {
             name,
             email,
             resumePath,
-            userId: req.session.userId
+            userId: userId
         });
 
         await application.save();

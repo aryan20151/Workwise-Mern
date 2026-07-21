@@ -70,9 +70,11 @@ const authRouter = require('./routes/authRoutes');
 const companyRouter = require('./routes/companyRoutes');
 const cartRouter = require('./routes/cartRoutes');
 const contactRouter = require('./routes/contactRoutes');
+const aiRouter = require('./routes/aiRoutes');
 
 // Mount Routers
 app.use('/api/auth', authRouter);
+app.use('/api/ai', aiRouter);
 app.use('/api', companyRouter);
 app.use('/', cartRouter);
 app.use('/', contactRouter);

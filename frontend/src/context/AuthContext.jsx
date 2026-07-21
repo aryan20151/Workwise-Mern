@@ -22,6 +22,7 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [clerkState, setClerkState] = useState({ isLoaded: false, isSignedIn: false, user: null, signOut: null });
+  const syncedClerkIdRef = React.useRef(null);
 
   // Sync Clerk user with AuthContext when Clerk state updates
   useEffect(() => {
@@ -29,10 +30,17 @@ export const AuthProvider = ({ children }) => {
       const { isLoaded, isSignedIn, user: clerkUser } = clerkState;
       if (isLoaded) {
         if (isSignedIn && clerkUser) {
+          // Avoid duplicate google-sync API requests if already synced for this user ID
+          if (syncedClerkIdRef.current === clerkUser.id && user) {
+            setLoading(false);
+            return;
+          }
+          syncedClerkIdRef.current = clerkUser.id;
+
           const userEmail = clerkUser.primaryEmailAddress?.emailAddress;
           const userUsername = clerkUser.fullName || clerkUser.firstName || userEmail?.split('@')[0] || 'User';
 
-          // Sync Google user with backend MongoDB Atlas
+          // Sync Google user with backend MongoDB Atlas (runs ONCE)
           fetch('/api/auth/google-sync', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
