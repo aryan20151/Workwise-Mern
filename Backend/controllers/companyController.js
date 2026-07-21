@@ -11,10 +11,17 @@ const getCompanies = async (req, res) => {
         res.setHeader('Pragma', 'no-cache');
         res.setHeader('Expires', '0');
         
-        // Direct query from MongoDB collection to get all companies
+        // Direct query from MongoDB collection with fallbacks for collection name case sensitivity
         const db = mongoose.connection.db;
-        const companies = await db.collection('companies').find({}).toArray();
-        console.log(`✅ Successfully fetched ${companies.length} companies directly from MongoDB Atlas`);
+        let companies = await db.collection('companies').find({}).toArray();
+        if (!companies || companies.length === 0) {
+            companies = await db.collection('Companies').find({}).toArray();
+        }
+        if (!companies || companies.length === 0) {
+            companies = await Company.find({});
+        }
+
+        console.log(`✅ Successfully fetched ${companies.length} companies from MongoDB Atlas`);
         
         // Return ALL companies
         res.status(200).json({ 
@@ -36,21 +43,27 @@ const getCompanies = async (req, res) => {
 // @desc    Search companies in MongoDB
 // @route   GET /api/companies/search
 const searchCompanies = async (req, res) => {
-    const searchTerm = req.query.name || '';
+    const searchTerm = req.query.name || req.query.query || '';
     console.log('🔍 Searching companies in MongoDB Atlas with term:', searchTerm);
     
     try {
-        // Query MongoDB with filter
+        const db = mongoose.connection.db;
         const filter = searchTerm 
             ? { 
                 $or: [
                     { name: { $regex: searchTerm, $options: 'i' } },
                     { industry: { $regex: searchTerm, $options: 'i' } },
-                    { headquarters: { $regex: searchTerm, $options: 'i' } }
+                    { headquarters: { $regex: searchTerm, $options: 'i' } },
+                    { description: { $regex: searchTerm, $options: 'i' } }
                 ]
               } 
             : {};
-        const companies = await Company.find(filter);
+        
+        // Query directly from MongoDB collection to handle collection name case sensitivity
+        let companies = await db.collection('companies').find(filter).toArray();
+        if (companies.length === 0) {
+            companies = await db.collection('Companies').find(filter).toArray();
+        }
         
         console.log(`✅ Found ${companies.length} companies matching "${searchTerm}"`);
         

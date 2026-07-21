@@ -12,6 +12,14 @@ const contactSchema = new mongoose.Schema({
   message: {
     type: String,
     required: true
+  },
+  phone: {
+    type: String,
+    default: ''
+  },
+  category: {
+    type: String,
+    default: 'General Inquiry'
   }
 }, { 
   timestamps: true,

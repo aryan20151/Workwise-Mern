@@ -3,14 +3,14 @@ const Contact = require('../models/Contact');
 // @desc    Submit a contact message
 // @route   POST /contact
 const submitContact = async (req, res) => {
-  const { name, email, message } = req.body;
+  const { name, email, message, phone, category } = req.body;
 
   if (!name || !email || !message) {
     return res.status(400).json({ error: "All fields are required" });
   }
 
   try {
-    const newMessage = new Contact({ name, email, message });
+    const newMessage = new Contact({ name, email, message, phone, category });
     await newMessage.save();
     res.status(200).json({ message: "Message submitted successfully!" });
   } catch (err) {

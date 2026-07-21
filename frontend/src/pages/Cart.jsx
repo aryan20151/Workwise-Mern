@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { toast } from '../utils/toast';
 import { useCartStore } from '../store/useCartStore';
 import { FiTrash2, FiVideo, FiFileText, FiPlusCircle, FiAlertCircle } from 'react-icons/fi';
 
@@ -8,6 +9,7 @@ const Cart = () => {
   const isLoading = useCartStore((state) => state.isLoading);
   const fetchCart = useCartStore((state) => state.fetchCart);
   const removeItem = useCartStore((state) => state.removeItem);
+  const setCartItems = useCartStore((state) => state.setCartItems);
 
   const [error, setError] = useState('');
 
@@ -35,12 +37,13 @@ const Cart = () => {
       const data = await response.json();
       if (data.success) {
         setCartItems([]);
+        toast.success('All applications withdrawn successfully');
       } else {
-        alert(data.error || 'Failed to clear cart.');
+        toast.error(data.error || 'Failed to clear application cart.');
       }
     } catch (err) {
       console.error('Error clearing cart:', err);
-      alert('An error occurred. Please try again.');
+      toast.error('An error occurred while clearing applications.');
     }
   };
 

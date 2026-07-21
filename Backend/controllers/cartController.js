@@ -80,11 +80,13 @@ const addToCart = async (req, res) => {
             });
         }
 
+        const finalResumePath = resumePath || 'quick_apply_profile_resume.pdf';
+
         // Validate required fields
-        if (!companyId || !companyName || !name || !email || !resumePath) {
+        if (!companyId || !companyName || !name || !email) {
             return res.status(400).json({
                 success: false,
-                error: "Missing required fields"
+                error: "Missing required fields: companyId, companyName, name, email"
             });
         }
 
@@ -103,7 +105,7 @@ const addToCart = async (req, res) => {
             companyName,
             name,
             email,
-            resumePath,
+            resumePath: finalResumePath,
             userId: userId
         });
 

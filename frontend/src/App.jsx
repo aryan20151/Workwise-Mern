@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthenticateWithRedirectCallback } from '@clerk/clerk-react';
+import { Toaster } from 'sonner';
 import { AuthProvider } from './context/AuthContext';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
@@ -18,6 +19,7 @@ function App() {
   return (
     <Router>
       <AuthProvider>
+        <Toaster richColors position="top-right" closeButton visibleToasts={3} duration={3000} />
         <div className="flex flex-col min-h-screen bg-slate-50">
           <Navbar />
           <main className="flex-grow">

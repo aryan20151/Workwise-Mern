@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
+import { toast } from '../utils/toast';
 import { useAuth } from '../context/AuthContext';
 import { FiFileText, FiUser, FiMail, FiBriefcase, FiAlertCircle, FiCheckCircle, FiCpu, FiZap, FiCheck, FiX, FiAward, FiSend } from 'react-icons/fi';
 
@@ -20,19 +21,63 @@ const Apply = () => {
   const [isFetchingUser, setIsFetchingUser] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [allCompanies, setAllCompanies] = useState([]);
 
   // AI Assistant States
   const [isAnalyzingAts, setIsAnalyzingAts] = useState(false);
   const [isGeneratingLetter, setIsGeneratingLetter] = useState(false);
   const [atsResult, setAtsResult] = useState(null);
 
-  // Auto-populate user details from AuthContext without extra API calls
+  // Auto-populate user details from AuthContext & API endpoint
   useEffect(() => {
     if (user) {
-      if (user.username) setName(user.username);
-      if (user.email) setEmail(user.email);
+      if (user.username && !name) setName(user.username);
+      if (user.email && !email) setEmail(user.email);
     }
   }, [user]);
+
+  useEffect(() => {
+    fetchAllCompanies();
+    fetchUserDetails();
+  }, []);
+
+  const fetchUserDetails = async () => {
+    try {
+      const res = await fetch('/api/auth/user-details', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.user) {
+          if (data.user.username) setName(data.user.username);
+          if (data.user.email) setEmail(data.user.email);
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching user details in Apply.jsx:', err);
+    }
+  };
+
+  const fetchAllCompanies = async () => {
+    try {
+      const timestamp = new Date().getTime();
+      const res = await fetch(`/api/companies?nocache=${timestamp}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && Array.isArray(data.companies)) {
+          const formatted = data.companies.map((c, i) => ({
+            ...c,
+            companyId: c.companyId || String(c._id || `comp_${i + 1}`),
+            name: c.name || 'Company'
+          }));
+          setAllCompanies(formatted);
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching companies list:', err);
+    }
+  };
 
   useEffect(() => {
     // 1. Check React Router location state (clean URL)
@@ -60,15 +105,12 @@ const Apply = () => {
     try {
       const response = await fetch('/api/apply/data');
       const result = await response.json();
-      if (result.success && result.data) {
+      if (result.success && result.data && result.data.companyId) {
         setCompanyId(result.data.companyId || '');
         setCompanyName(result.data.companyName || '');
-      } else {
-        setError('No company details were found in the session. Please browse the companies page first.');
       }
     } catch (err) {
       console.error('Error fetching session apply data:', err);
-      setError('Failed to retrieve company details. Please browse companies first.');
     }
   };
 
@@ -184,6 +226,11 @@ const Apply = () => {
     setError('');
     setSuccess('');
 
+    if (!companyId) {
+      setError('Please select a target company from the dropdown list above before submitting.');
+      return;
+    }
+
     if (!resumeFile) {
       setError('Please choose a resume file to upload.');
       return;
@@ -240,6 +287,7 @@ const Apply = () => {
       }
 
       setSuccess('Application submitted successfully! Redirecting to cart...');
+      toast.success('Application submitted successfully! Redirecting to your cart...');
       setTimeout(() => {
         navigate('/cart');
       }, 2000);
@@ -247,6 +295,7 @@ const Apply = () => {
     } catch (err) {
       console.error('Submission error:', err);
       setError(err.message || 'An error occurred while submitting your application.');
+      toast.error(err.message || 'Submission failed. Please check form fields.');
       setIsLoading(false);
     }
   };
@@ -307,28 +356,62 @@ const Apply = () => {
         )}
 
         {/* Form Body */}
-        {companyId && (
-          <form onSubmit={handleSubmit} className="space-y-6">
-            
-            {/* Company Info Box */}
+        <form onSubmit={handleSubmit} className="space-y-6">
+          
+          {/* Target Company Banner / Selector */}
+          {companyId ? (
             <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 rounded-2xl text-white shadow-lg shadow-blue-500/20 flex items-center justify-between">
               <div>
                 <div className="flex items-center gap-2 text-white font-bold text-xl">
                   <FiBriefcase className="w-5 h-5" />
                   <span>{companyName}</span>
                 </div>
-                <p className="text-xs text-blue-100 mt-1">Position: Fullstack / Web Development Role</p>
+                <p className="text-xs text-blue-100 mt-1">Position: Engineering & Tech Job Listing</p>
               </div>
-              <span className="bg-white/20 backdrop-blur-md px-3.5 py-1.5 rounded-full text-xs font-semibold">
-                Active Job Listing
-              </span>
+              <button
+                type="button"
+                onClick={() => { setCompanyId(''); setCompanyName(''); }}
+                className="bg-white/20 hover:bg-white/30 backdrop-blur-md px-3.5 py-1.5 rounded-full text-xs font-semibold text-white transition-colors cursor-pointer"
+              >
+                Change Company
+              </button>
             </div>
+          ) : (
+            <div className="bg-blue-50/70 border border-blue-200/80 rounded-2xl p-6 shadow-sm">
+              <label className="block text-xs font-bold uppercase tracking-wider text-blue-950 mb-2 flex items-center gap-1.5">
+                <FiBriefcase className="text-blue-600 w-4 h-4" /> Select Target Employer / Company <span className="text-rose-500">*</span>
+              </label>
+              <select
+                value={companyId}
+                onChange={(e) => {
+                  const selectedId = e.target.value;
+                  setCompanyId(selectedId);
+                  const found = allCompanies.find(c => c.companyId === selectedId);
+                  if (found) setCompanyName(found.name);
+                }}
+                className="block w-full px-4 py-3 bg-white border border-blue-200 rounded-xl text-slate-900 font-bold text-sm focus:outline-none focus:ring-2 focus:ring-blue-600 transition-all shadow-sm"
+              >
+                <option value="">-- Select a Company / Employer --</option>
+                {allCompanies.map((c) => (
+                  <option key={c.companyId} value={c.companyId}>
+                    {c.name} ({c.industry || 'Technology'}) — {c.locationType || 'Remote'}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-slate-500 mt-2">
+                Select a company above to send your application, or browse our{' '}
+                <Link to="/companies" className="text-blue-600 font-bold hover:underline">
+                  Full Employer Directory
+                </Link>.
+              </p>
+            </div>
+          )}
 
             <div className="grid sm:grid-cols-2 gap-5">
-              {/* Full Name (Disabled & Auto-filled) */}
+              {/* Full Name */}
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-1.5">
-                  Full Name (Account Auto-filled)
+                  Full Name <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -336,19 +419,19 @@ const Apply = () => {
                   </div>
                   <input
                     type="text"
-                    disabled
-                    readOnly
+                    required
                     value={name}
-                    className="block w-full pl-10 pr-4 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-slate-600 font-semibold cursor-not-allowed text-sm"
-                    placeholder="Loading profile..."
+                    onChange={(e) => setName(e.target.value)}
+                    className="block w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all text-sm"
+                    placeholder="Enter your full name"
                   />
                 </div>
               </div>
 
-              {/* Email Address (Disabled & Auto-filled) */}
+              {/* Email Address */}
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-1.5">
-                  Email Address (Account Auto-filled)
+                  Email Address <span className="text-rose-500">*</span>
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -356,11 +439,11 @@ const Apply = () => {
                   </div>
                   <input
                     type="email"
-                    disabled
-                    readOnly
+                    required
                     value={email}
-                    className="block w-full pl-10 pr-4 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-slate-600 font-semibold cursor-not-allowed text-sm"
-                    placeholder="Loading email..."
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="block w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all text-sm"
+                    placeholder="name@example.com"
                   />
                 </div>
               </div>
@@ -549,8 +632,7 @@ const Apply = () => {
               )}
             </button>
           </form>
-        )}
-      </div>
+        </div>
     </div>
   );
 };
