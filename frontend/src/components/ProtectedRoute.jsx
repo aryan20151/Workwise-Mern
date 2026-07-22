@@ -2,7 +2,7 @@ import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
-const ProtectedRoute = () => {
+const ProtectedRoute = ({ allowedRoles }) => {
   const { user, loading } = useAuth();
 
   if (loading) {
@@ -18,6 +18,14 @@ const ProtectedRoute = () => {
 
   if (!user) {
     return <Navigate to="/login" replace />;
+  }
+
+  // Check role authorization if allowedRoles is specified
+  if (allowedRoles && allowedRoles.length > 0) {
+    const userRole = user.role || 'jobseeker';
+    if (!allowedRoles.includes(userRole)) {
+      return <Navigate to="/homepage" replace />;
+    }
   }
 
   return <Outlet />;

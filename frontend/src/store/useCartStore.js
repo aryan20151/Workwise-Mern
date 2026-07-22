@@ -8,21 +8,32 @@ export const useCartStore = create((set, get) => ({
 
   setCartItems: (items) => set({ cartItems: items, cartCount: items.length }),
 
-  fetchCart: async () => {
+  fetchCart: async (force = false) => {
+    // Guard against duplicate concurrent fetch requests
+    if (get().isLoading && !force) return;
+
     set({ isLoading: true });
     try {
-      const response = await fetch('/api/cart');
+      const storedUser = (() => {
+        try { return JSON.parse(localStorage.getItem('workwise_user')); } catch (e) { return null; }
+      })();
+
+      const response = await fetch('/api/cart', {
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(storedUser?.id ? { 'x-user-id': storedUser.id } : {})
+        }
+      });
+
       if (response.ok) {
         const data = await response.json();
         if (data.success && Array.isArray(data.cart)) {
           set({ cartItems: data.cart, cartCount: data.cart.length });
         }
-      } else {
-        toast.error('Failed to load application cart');
       }
     } catch (err) {
       console.error('Error fetching cart in Zustand store:', err);
-      toast.error('Network error loading job applications');
     } finally {
       set({ isLoading: false });
     }
@@ -31,8 +42,16 @@ export const useCartStore = create((set, get) => ({
   removeItem: async (companyId) => {
     const previousItems = get().cartItems;
     try {
+      const storedUser = (() => {
+        try { return JSON.parse(localStorage.getItem('workwise_user')); } catch (e) { return null; }
+      })();
+
       const response = await fetch(`/api/cart/${companyId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        credentials: 'include',
+        headers: {
+          ...(storedUser?.id ? { 'x-user-id': storedUser.id } : {})
+        }
       });
       if (response.ok) {
         const currentItems = previousItems.filter(item => item.companyId !== companyId);
@@ -48,4 +67,3 @@ export const useCartStore = create((set, get) => ({
     }
   }
 }));
-

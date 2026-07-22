@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useSignIn } from '@clerk/clerk-react';
+import { toast } from '../utils/toast';
 import { FiUser, FiLock, FiAlertCircle, FiBriefcase } from 'react-icons/fi';
 
 const Login = () => {
@@ -40,12 +41,17 @@ const Login = () => {
     try {
       const result = await login(emailOrUsername, password);
       if (result.success) {
+        toast.success(`Welcome back, ${result.user?.username || 'user'}!`);
         navigate('/homepage');
       } else {
-        setError(result.message || 'Invalid username/email or password.');
+        const errorMsg = result.message || 'Invalid username/email or password.';
+        setError(errorMsg);
+        toast.error(errorMsg);
       }
     } catch (err) {
-      setError('An error occurred. Please try again.');
+      const errorMsg = 'An error occurred. Please try again.';
+      setError(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setIsLoading(false);
     }

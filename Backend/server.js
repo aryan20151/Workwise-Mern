@@ -6,6 +6,42 @@ const session = require('express-session');
 const cors = require("cors");
 require('dotenv').config();
 
+const User = require('./models/User');
+
+// Helper to seed and sync admin user strictly from environment variables (.env)
+const seedAdminUser = async () => {
+    try {
+        const adminEmail = process.env.ADMIN_EMAIL || 'admin@workwise.com';
+        const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
+        const adminUsername = process.env.ADMIN_USERNAME || 'admin';
+
+        let adminUser = await User.findOne({ role: 'admin' });
+        if (!adminUser) {
+            adminUser = new User({
+                username: adminUsername,
+                email: adminEmail,
+                password: adminPassword,
+                role: 'admin'
+            });
+            await adminUser.save();
+            console.log(`👑 Admin Account Initialized from .env: Username: "${adminUsername}" | Email: "${adminEmail}"`);
+        } else {
+            const isPasswordMatch = await adminUser.comparePassword(adminPassword);
+            if (!isPasswordMatch || adminUser.username !== adminUsername || adminUser.email !== adminEmail) {
+                adminUser.username = adminUsername;
+                adminUser.email = adminEmail;
+                adminUser.password = adminPassword;
+                await adminUser.save();
+                console.log(`👑 Admin Account Credentials Updated from .env: Username: "${adminUsername}" | Email: "${adminEmail}"`);
+            } else {
+                console.log(`👑 Admin Account Active & Ready: Username: "${adminUsername}" (${adminEmail})`);
+            }
+        }
+    } catch (err) {
+        console.log('Notice syncing admin user:', err.message);
+    }
+};
+
 // Connect to MongoDB
 mongoose.connect(process.env.MONGO_URI, {
     useNewUrlParser: true,
@@ -13,6 +49,7 @@ mongoose.connect(process.env.MONGO_URI, {
 })
 .then(() => {
     console.log("MongoDB Atlas connected successfully to database:", mongoose.connection.name);
+    seedAdminUser();
 })
 .catch(err => {
     console.error("MongoDB Atlas connection error:", err);

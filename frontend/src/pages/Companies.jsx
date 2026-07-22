@@ -2,13 +2,16 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '../utils/toast';
 import { useCartStore } from '../store/useCartStore';
+import { useAuth } from '../context/AuthContext';
+import AddCompanyModal from '../components/AddCompanyModal';
 import { 
   FiSearch, FiMapPin, FiBriefcase, FiChevronDown, FiChevronUp, 
-  FiFilter, FiX, FiDollarSign, FiClock, FiUserCheck, FiChevronLeft, FiChevronRight, FiRotateCcw, FiSliders, FiZap, FiArrowRight, FiSend, FiFileText, FiUpload
+  FiFilter, FiX, FiDollarSign, FiClock, FiUserCheck, FiChevronLeft, FiChevronRight, FiRotateCcw, FiSliders, FiZap, FiArrowRight, FiSend, FiFileText, FiUpload, FiPlus
 } from 'react-icons/fi';
 
 const Companies = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [companies, setCompanies] = useState([]);
   const [filteredCompanies, setFilteredCompanies] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -16,6 +19,7 @@ const Companies = () => {
   const [expandedId, setExpandedId] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   // Quick Application Modal States
   const [quickApplyCompany, setQuickApplyCompany] = useState(null);
@@ -366,6 +370,37 @@ const Companies = () => {
             <span className="text-slate-600">•</span>
             <span className="flex items-center gap-1.5"><FiUserCheck className="text-emerald-400" /> Active Hiring</span>
           </div>
+
+          {/* Action Buttons */}
+          {user?.role === 'admin' && (
+            <div className="mt-6 pt-4 border-t border-white/10 flex flex-wrap justify-center gap-3">
+              <button
+                onClick={() => navigate('/manage-companies')}
+                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm shadow-xl shadow-blue-500/30 transition-all cursor-pointer"
+              >
+                <FiBriefcase className="w-4 h-4" />
+                <span>Manage All Companies</span>
+              </button>
+            </div>
+          )}
+          {user?.role === 'employer' && (
+            <div className="mt-6 pt-4 border-t border-white/10 flex flex-wrap justify-center gap-3">
+              <button
+                onClick={() => navigate('/post-requisition')}
+                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-sm shadow-xl shadow-blue-500/30 transition-all cursor-pointer"
+              >
+                <FiPlus className="w-4 h-4" />
+                <span>Post Job</span>
+              </button>
+              <button
+                onClick={() => navigate('/requisitions')}
+                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-bold text-sm transition-all cursor-pointer"
+              >
+                <FiBriefcase className="w-4 h-4" />
+                <span>Job Requisitions</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -790,9 +825,19 @@ const Companies = () => {
                         </span>
                         <span className="px-2 py-0.5 bg-amber-50 text-amber-800 border border-amber-100 rounded-md flex items-center gap-1 font-semibold">
                           <FiDollarSign className="w-3 h-3 text-amber-600" />
-                          {company.salaryRange}
+                          {company.budget || company.salaryRange}
                         </span>
                       </div>
+
+                      {Array.isArray(company.techStack) && company.techStack.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mb-3">
+                          {company.techStack.map((tech, i) => (
+                            <span key={i} className="px-2 py-0.5 bg-blue-50 text-blue-700 text-[10px] font-bold rounded-md border border-blue-100">
+                              {tech}
+                            </span>
+                          ))}
+                        </div>
+                      )}
 
                       <p className="text-slate-600 text-xs leading-relaxed line-clamp-2 mb-3">
                         {company.description}
@@ -1034,6 +1079,7 @@ const Companies = () => {
           </div>
         </div>
       )}
+
     </div>
   );
 };

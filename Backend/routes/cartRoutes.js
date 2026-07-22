@@ -11,10 +11,14 @@ const {
     clearCart, 
     applyRedirect, 
     getApplyData, 
-    getSessionDebug 
+    getSessionDebug,
+    getEmployerApplications,
+    updateApplicationStatus
 } = require('../controllers/cartController');
 
-// Configure upload directory (points to root uploads folder, stepping up twice from Backend/routes/)
+const { requireAuth, authorizeRoles } = require('../middleware/authMiddleware');
+
+// Configure upload directory
 const uploadsDir = path.join(__dirname, '..', '..', 'uploads');
 if (!fs.existsSync(uploadsDir)) {
     fs.mkdirSync(uploadsDir, { recursive: true });
@@ -34,6 +38,10 @@ router.get('/api/cart', getCart);
 router.post('/api/cart', addToCart);
 router.delete('/api/cart/:companyId', removeFromCart);
 router.delete('/api/cart', clearCart);
+
+// Employer Kanban Application routes
+router.get('/api/applications/employer', requireAuth, authorizeRoles('employer', 'admin'), getEmployerApplications);
+router.patch('/api/applications/:id/status', requireAuth, authorizeRoles('employer', 'admin'), updateApplicationStatus);
 
 // Resume upload handler
 const handleResumeUpload = (req, res) => {
@@ -61,11 +69,11 @@ const handleResumeUpload = (req, res) => {
   }
 };
 
-// Resume upload routes (supports both /upload-resume and /api/upload-resume)
+// Resume upload routes
 router.post('/upload-resume', upload.single('resume'), handleResumeUpload);
 router.post('/api/upload-resume', upload.single('resume'), handleResumeUpload);
 
-// Apply redirect routes (legacy)
+// Apply redirect routes
 router.post('/apply', applyRedirect);
 router.get('/api/apply/data', getApplyData);
 

@@ -22,6 +22,22 @@ const companySchema = new mongoose.Schema({
     description: {
         type: String,
         required: true
+    },
+    budget: {
+        type: String,
+        default: 'Negotiable'
+    },
+    type: {
+        type: String,
+        default: 'Full-Time'
+    },
+    techStack: {
+        type: [String],
+        default: []
+    },
+    postedBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
     }
 }, { 
     timestamps: true,

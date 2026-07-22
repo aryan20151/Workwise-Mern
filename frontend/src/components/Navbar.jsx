@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCartStore } from '../store/useCartStore';
-import { FiShoppingCart, FiUser, FiLogOut, FiMenu, FiX, FiBriefcase } from 'react-icons/fi';
+import { FiShoppingCart, FiUser, FiLogOut, FiMenu, FiX, FiBriefcase, FiEdit3 } from 'react-icons/fi';
 
 const Navbar = () => {
   const { user, logout } = useAuth();
@@ -14,14 +14,18 @@ const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
-  // Re-fetch cart count on location change via Zustand store
+  // Fetch cart count when user changes
   useEffect(() => {
     if (user) {
       fetchCart();
     }
+  }, [user]);
+
+  // Close menus on page navigation
+  useEffect(() => {
     setIsOpen(false);
     setDropdownOpen(false);
-  }, [location.pathname, user]);
+  }, [location.pathname]);
 
   const handleLogout = async () => {
     const success = await logout();
@@ -69,6 +73,31 @@ const Navbar = () => {
             <Link to="/contact" className={linkClass('/contact')}>
               Contact
             </Link>
+            {user?.role === 'admin' && (
+              <Link to="/manage-companies" className={linkClass('/manage-companies')}>
+                Company Profiles
+              </Link>
+            )}
+            {(user?.role === 'employer' || user?.role === 'admin') && (
+              <>
+                <Link to="/requisitions" className={linkClass('/requisitions')}>
+                  Job Requisitions
+                </Link>
+                {user?.role === 'employer' && (
+                  <Link to="/post-requisition" className={linkClass('/post-requisition')}>
+                    Post Job
+                  </Link>
+                )}
+                <Link to="/candidate-pipeline" className={linkClass('/candidate-pipeline')}>
+                  Candidate Pipeline
+                </Link>
+              </>
+            )}
+            {user?.role === 'admin' && (
+              <Link to="/admin/master-setup" className={linkClass('/admin/master-setup')}>
+                Admin Master Setup
+              </Link>
+            )}
 
             {user ? (
               <>
@@ -98,14 +127,21 @@ const Navbar = () => {
                         <FiUser className="w-3.5 h-3.5" />
                       </div>
                     )}
-                    <span className="text-sm font-semibold max-w-[100px] truncate">
+                    <span title={user.username} className="text-sm font-semibold max-w-[100px] truncate">
                       {user.username}
                     </span>
                   </button>
 
                   {dropdownOpen && (
                     <div className="absolute right-0 mt-2 w-52 bg-white border border-slate-200 rounded-xl shadow-xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150 z-50">
-                      <div className="px-4 py-3 bg-slate-50/80 border-b border-slate-100 flex items-center gap-3">
+                      <div 
+                        onClick={() => {
+                          navigate('/profile');
+                          setDropdownOpen(false);
+                        }}
+                        className="px-4 py-3 bg-slate-50/80 border-b border-slate-100 flex items-center gap-3 cursor-pointer hover:bg-slate-100/80 transition-colors"
+                        title="Click to Edit Profile"
+                      >
                         {user.avatar ? (
                           <img src={user.avatar} alt={user.username} className="w-9 h-9 rounded-full object-cover border border-slate-200 shadow-sm" />
                         ) : (
@@ -115,15 +151,34 @@ const Navbar = () => {
                         )}
                         <div className="overflow-hidden">
                           <p className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">Signed in as</p>
-                          <p className="text-sm font-bold text-slate-800 truncate">
+                          <p title={user.username} className="text-sm font-bold text-slate-800 truncate">
                             {user.username}
                           </p>
+                          <span className={`inline-block mt-1 px-2 py-0.5 text-[10px] font-extrabold uppercase rounded-full tracking-wide ${
+                            user.role === 'admin'
+                              ? 'bg-purple-100 text-purple-700'
+                              : user.role === 'employer'
+                              ? 'bg-indigo-100 text-indigo-700'
+                              : 'bg-blue-100 text-blue-700'
+                          }`}>
+                            {user.role || 'jobseeker'}
+                          </span>
                         </div>
                       </div>
-                      <div className="p-1">
+                      <div className="p-1 border-t border-slate-100">
+                        <button
+                          onClick={() => {
+                            navigate('/profile');
+                            setDropdownOpen(false);
+                          }}
+                          className="w-full text-left px-3.5 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-lg flex items-center gap-2.5 font-semibold transition-colors duration-150 cursor-pointer"
+                        >
+                          <FiEdit3 className="w-4 h-4 text-blue-600" />
+                          <span>Edit Profile</span>
+                        </button>
                         <button
                           onClick={handleLogout}
-                          className="w-full text-left px-3.5 py-2 text-sm text-rose-600 hover:bg-rose-50/80 rounded-lg flex items-center gap-2.5 font-semibold transition-colors duration-150"
+                          className="w-full text-left px-3.5 py-2 text-sm text-rose-600 hover:bg-rose-50/80 rounded-lg flex items-center gap-2.5 font-semibold transition-colors duration-150 cursor-pointer"
                         >
                           <FiLogOut className="w-4 h-4 text-rose-500" />
                           <span>Sign Out</span>
@@ -203,6 +258,56 @@ const Navbar = () => {
           >
             Contact
           </Link>
+          {user?.role === 'admin' && (
+            <Link
+              to="/manage-companies"
+              className={`block px-4 py-2 rounded-lg text-base font-semibold ${
+                isActive('/manage-companies') ? 'bg-blue-50 text-blue-600' : 'text-slate-600'
+              }`}
+            >
+              Company Profiles
+            </Link>
+          )}
+          {(user?.role === 'employer' || user?.role === 'admin') && (
+            <>
+              <Link
+                to="/requisitions"
+                className={`block px-4 py-2 rounded-lg text-base font-semibold ${
+                  isActive('/requisitions') ? 'bg-blue-50 text-blue-600' : 'text-slate-600'
+                }`}
+              >
+                Job Requisitions
+              </Link>
+              {user?.role === 'employer' && (
+                <Link
+                  to="/post-requisition"
+                  className={`block px-4 py-2 rounded-lg text-base font-semibold ${
+                    isActive('/post-requisition') ? 'bg-blue-50 text-blue-600' : 'text-slate-600'
+                  }`}
+                >
+                  Post Job
+                </Link>
+              )}
+              <Link
+                to="/candidate-pipeline"
+                className={`block px-4 py-2 rounded-lg text-base font-semibold ${
+                  isActive('/candidate-pipeline') ? 'bg-blue-50 text-blue-600' : 'text-slate-600'
+                }`}
+              >
+                Candidate Pipeline
+              </Link>
+            </>
+          )}
+          {user?.role === 'admin' && (
+            <Link
+              to="/admin/master-setup"
+              className={`block px-4 py-2 rounded-lg text-base font-semibold ${
+                isActive('/admin/master-setup') ? 'bg-purple-50 text-purple-600' : 'text-purple-700'
+              }`}
+            >
+              Admin Master Setup
+            </Link>
+          )}
 
           {user ? (
             <div className="border-t border-slate-100 pt-3 mt-3">
@@ -216,9 +321,28 @@ const Navbar = () => {
                 )}
                 <div>
                   <p className="text-xs text-slate-400">Logged in as</p>
-                  <p className="text-sm font-bold text-slate-700 truncate">{user.username}</p>
+                  <p title={user.username} className="text-sm font-bold text-slate-700 truncate">{user.username}</p>
+                  <span className={`inline-block mt-0.5 px-2 py-0.5 text-[10px] font-extrabold uppercase rounded-full tracking-wide ${
+                    user.role === 'admin'
+                      ? 'bg-purple-100 text-purple-700'
+                      : user.role === 'employer'
+                      ? 'bg-indigo-100 text-indigo-700'
+                      : 'bg-blue-100 text-blue-700'
+                  }`}>
+                    {user.role || 'jobseeker'}
+                  </span>
                 </div>
               </div>
+              <button
+                onClick={() => {
+                  navigate('/profile');
+                  setIsOpen(false);
+                }}
+                className="w-full text-left px-4 py-2.5 text-base text-slate-700 hover:bg-slate-50 flex items-center gap-2 font-semibold"
+              >
+                <FiEdit3 className="w-5 h-5 text-blue-600" />
+                Edit Profile
+              </button>
               <button
                 onClick={handleLogout}
                 className="w-full text-left px-4 py-2.5 text-base text-rose-600 hover:bg-rose-50 flex items-center gap-2 font-semibold"

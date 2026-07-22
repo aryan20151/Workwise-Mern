@@ -60,6 +60,7 @@ export const AuthProvider = ({ children }) => {
               id: (data.success && data.user && data.user.id) || clerkUser.id,
               username: (data.success && data.user && data.user.username) || userUsername,
               email: userEmail,
+              role: (data.success && data.user && data.user.role) || 'jobseeker',
               avatar: clerkUser.imageUrl
             };
             setUser(formattedUser);
@@ -70,6 +71,7 @@ export const AuthProvider = ({ children }) => {
               id: clerkUser.id,
               username: userUsername,
               email: userEmail,
+              role: 'jobseeker',
               avatar: clerkUser.imageUrl
             };
             setUser(fallbackUser);
@@ -128,13 +130,13 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const signup = async (username, email, password) => {
+  const signup = async (username, email, password, role = 'jobseeker') => {
     setLoading(true);
     try {
       const response = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, email, password })
+        body: JSON.stringify({ username, email, password, role })
       });
       const data = await response.json();
       if (data.success) {

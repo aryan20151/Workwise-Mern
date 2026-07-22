@@ -332,7 +332,7 @@ const Contact = () => {
                 </div>
                 <div>
                   <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">Headquarters</h4>
-                  <p className="text-sm font-bold text-slate-900 mt-0.5">123 Naraingarh</p>
+                  <p className="text-sm font-bold text-slate-900 mt-0.5">123 XYZ</p>
                   <p className="text-xs text-slate-500 mt-0.5">Haryana, India 10001</p>
                   <a
                     href="https://maps.google.com"

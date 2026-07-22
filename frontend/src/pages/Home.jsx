@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { FiChevronLeft, FiChevronRight, FiCheckCircle, FiTrendingUp, FiAward } from 'react-icons/fi';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { FiChevronLeft, FiChevronRight, FiCheckCircle, FiTrendingUp, FiAward, FiBriefcase, FiPlus } from 'react-icons/fi';
 
 const slides = [
   {
@@ -39,7 +40,10 @@ const testimonials = [
 ];
 
 const Home = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [myCompaniesCount, setMyCompaniesCount] = useState(null);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -47,6 +51,31 @@ const Home = () => {
     }, 6000);
     return () => clearInterval(timer);
   }, []);
+
+  useEffect(() => {
+    const checkEmployerCompanies = async () => {
+      const storedUser = (() => {
+        try { return JSON.parse(localStorage.getItem('workwise_user')); } catch (e) { return null; }
+      })();
+      const currentUser = user || storedUser;
+      if (currentUser?.role === 'employer') {
+        try {
+          const userId = currentUser.id || currentUser._id;
+          const res = await fetch('/api/companies/my-listings', {
+            credentials: 'include',
+            headers: { ...(userId ? { 'x-user-id': userId } : {}) }
+          });
+          const data = await res.json();
+          if (res.ok && data.myCompanies) {
+            setMyCompaniesCount(data.myCompanies.length);
+          }
+        } catch (e) {
+          console.error('Error checking employer companies on Home:', e);
+        }
+      }
+    };
+    checkEmployerCompanies();
+  }, [user]);
 
   const nextSlide = () => {
     setCurrentSlide((prev) => (prev + 1) % slides.length);
@@ -56,8 +85,60 @@ const Home = () => {
     setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
   };
 
+  const storedUser = (() => {
+    try { return JSON.parse(localStorage.getItem('workwise_user')); } catch (e) { return null; }
+  })();
+  const activeUser = user || storedUser;
+
   return (
     <div className="flex flex-col min-h-[calc(100vh-4rem)]">
+      {/* Employer Onboarding / Dashboard Header Banner */}
+      {activeUser?.role === 'employer' && (
+        <div className="bg-slate-900 border-b border-slate-800 py-6 px-4 sm:px-6 lg:px-8">
+          <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 bg-gradient-to-r from-blue-900/80 via-indigo-900/80 to-slate-950 p-6 rounded-2xl border border-blue-500/30 text-white shadow-2xl">
+            <div>
+              <div className="flex items-center gap-2 mb-1.5">
+                <span className="px-2.5 py-0.5 bg-blue-500/20 text-blue-300 text-xs font-extrabold rounded-md uppercase tracking-wider border border-blue-500/30">
+                  Employer Portal
+                </span>
+                {myCompaniesCount === 0 && (
+                  <span className="px-2.5 py-0.5 bg-amber-500/20 text-amber-300 text-xs font-extrabold rounded-md uppercase tracking-wider border border-amber-500/30">
+                    Action Required
+                  </span>
+                )}
+              </div>
+              <h2 className="text-2xl font-extrabold tracking-tight">
+                Welcome back, {activeUser?.username || 'Employer'}!
+              </h2>
+              <p className="text-xs text-slate-300 mt-1 max-w-xl leading-relaxed">
+                Manage your open job requisitions, post new positions, and review your candidate pipeline.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-3 shrink-0">
+              <button
+                onClick={() => navigate('/post-requisition')}
+                className="px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold rounded-xl text-xs transition-all shadow-md shadow-blue-500/20 flex items-center gap-1.5 cursor-pointer"
+              >
+                <FiPlus className="w-4 h-4" />
+                <span>Post Job Requisition</span>
+              </button>
+              <button
+                onClick={() => navigate('/requisitions')}
+                className="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl text-xs transition-colors cursor-pointer"
+              >
+                Job Requisitions
+              </button>
+              <button
+                onClick={() => navigate('/candidate-pipeline')}
+                className="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white font-bold rounded-xl text-xs transition-colors cursor-pointer"
+              >
+                Candidate Pipeline
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Hero Section Carousel */}
       <section className="relative h-[550px] overflow-hidden bg-slate-900">
         <div className="absolute inset-0 z-10 bg-slate-950/40"></div>

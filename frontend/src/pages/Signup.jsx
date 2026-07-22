@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useSignUp } from '@clerk/clerk-react';
+import { toast } from '../utils/toast';
 import { FiUser, FiMail, FiLock, FiAlertCircle, FiBriefcase } from 'react-icons/fi';
 
 const Signup = () => {
@@ -13,6 +14,7 @@ const Signup = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [role, setRole] = useState('jobseeker');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -41,24 +43,32 @@ const Signup = () => {
     setSuccess('');
 
     if (password !== confirmPassword) {
-      setError('Passwords do not match!');
+      const msg = 'Passwords do not match!';
+      setError(msg);
+      toast.error(msg);
       return;
     }
 
     setIsLoading(true);
 
     try {
-      const result = await signup(username, email, password);
+      const result = await signup(username, email, password, role);
       if (result.success) {
-        setSuccess('Account created successfully! Redirecting to login...');
+        const msg = 'Account created successfully! Redirecting to login...';
+        setSuccess(msg);
+        toast.success('Account created successfully!');
         setTimeout(() => {
           navigate('/login');
         }, 2000);
       } else {
-        setError(result.message || 'Signup failed. Please try again.');
+        const errorMsg = result.message || 'Signup failed. Please try again.';
+        setError(errorMsg);
+        toast.error(errorMsg);
       }
     } catch (err) {
-      setError('An error occurred. Please try again.');
+      const errorMsg = 'An error occurred. Please try again.';
+      setError(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setIsLoading(false);
     }
@@ -129,6 +139,41 @@ const Signup = () => {
         {/* Form */}
         <form className="mt-6 space-y-6" onSubmit={handleSubmit}>
           <div className="space-y-4">
+            {/* Role Selection */}
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
+                I am joining as a
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setRole('jobseeker')}
+                  className={`flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all ${
+                    role === 'jobseeker'
+                      ? 'border-blue-600 bg-blue-50/60 text-blue-700 font-semibold ring-2 ring-blue-500/20'
+                      : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
+                  }`}
+                >
+                  <FiUser className="w-5 h-5 mb-1 text-blue-600" />
+                  <span className="text-xs font-bold">Job Seeker</span>
+                  <span className="text-[10px] text-slate-500 font-normal">Looking for jobs</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setRole('employer')}
+                  className={`flex flex-col items-center justify-center p-3 rounded-xl border text-center transition-all ${
+                    role === 'employer'
+                      ? 'border-blue-600 bg-blue-50/60 text-blue-700 font-semibold ring-2 ring-blue-500/20'
+                      : 'border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100'
+                  }`}
+                >
+                  <FiBriefcase className="w-5 h-5 mb-1 text-indigo-600" />
+                  <span className="text-xs font-bold">Employer</span>
+                  <span className="text-[10px] text-slate-500 font-normal">Hiring candidates</span>
+                </button>
+              </div>
+            </div>
             <div>
               <label htmlFor="username" className="block text-sm font-semibold text-slate-700 mb-1.5">
                 Username
