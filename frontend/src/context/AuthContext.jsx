@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useEffect } from 'react';
 import { useUser, useClerk } from '@clerk/clerk-react';
 import { useAuthStore } from '../store/useAuthStore';
+import RoleSelectionModal from '../components/RoleSelectionModal';
+import api from '../utils/api';
 
 const AuthContext = createContext(null);
 
@@ -45,22 +47,25 @@ export const AuthProvider = ({ children }) => {
           const userEmail = clerkUser.primaryEmailAddress?.emailAddress;
           const userUsername = clerkUser.fullName || clerkUser.firstName || userEmail?.split('@')[0] || 'User';
 
-          fetch('/api/auth/google-sync', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              email: userEmail,
-              username: userUsername,
-              clerkId: clerkUser.id
-            })
+          const savedRole = localStorage.getItem('workwise_google_signup_role');
+          if (savedRole) {
+            localStorage.removeItem('workwise_google_signup_role');
+          }
+
+          api.post('/api/auth/google-sync', {
+            email: userEmail,
+            username: userUsername,
+            clerkId: clerkUser.id,
+            selectedRole: savedRole || null
           })
-          .then(res => res.json())
+          .then(res => res.data)
           .then(data => {
             const formattedUser = {
               id: (data.success && data.user && data.user.id) || clerkUser.id,
               username: (data.success && data.user && data.user.username) || userUsername,
               email: userEmail,
               role: (data.success && data.user && data.user.role) || 'jobseeker',
+              hasSelectedRole: data.success && data.user ? data.user.hasSelectedRole : false,
               avatar: clerkUser.imageUrl
             };
             setUser(formattedUser);
@@ -72,6 +77,7 @@ export const AuthProvider = ({ children }) => {
               username: userUsername,
               email: userEmail,
               role: 'jobseeker',
+              hasSelectedRole: false,
               avatar: clerkUser.imageUrl
             };
             setUser(fallbackUser);
@@ -88,16 +94,12 @@ export const AuthProvider = ({ children }) => {
 
   const checkAuthStatus = async () => {
     try {
-      const response = await fetch('/api/auth/status', {
-        headers: { 'Accept': 'application/json' }
-      });
-      if (response.ok) {
-        const data = await response.json();
-        if (data.authenticated && data.user) {
-          setUser(data.user);
-        } else {
-          setUser(null);
-        }
+      const response = await api.get('/api/auth/status');
+      const data = response.data;
+      if (data.authenticated && data.user) {
+        setUser(data.user);
+      } else {
+        setUser(null);
       }
     } catch (error) {
       console.error('Error verifying session status:', error);
@@ -110,12 +112,8 @@ export const AuthProvider = ({ children }) => {
   const login = async (emailOrUsername, password) => {
     setLoading(true);
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ emailOrUsername, password })
-      });
-      const data = await response.json();
+      const response = await api.post('/api/auth/login', { emailOrUsername, password });
+      const data = response.data;
       if (data.success && data.user) {
         setUser(data.user);
         return { success: true };
@@ -124,21 +122,18 @@ export const AuthProvider = ({ children }) => {
       }
     } catch (error) {
       console.error('Login request failed:', error);
-      return { success: false, message: 'An error occurred. Please try again.' };
+      const errMsg = error.response?.data?.message || 'An error occurred. Please try again.';
+      return { success: false, message: errMsg };
     } finally {
       setLoading(false);
     }
   };
 
-  const signup = async (username, email, password, role = 'jobseeker') => {
+  const signup = async (username, email, password, role = 'jobseeker', companyName = '') => {
     setLoading(true);
     try {
-      const response = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, email, password, role })
-      });
-      const data = await response.json();
+      const response = await api.post('/api/auth/signup', { username, email, password, role, companyName });
+      const data = response.data;
       if (data.success) {
         return { success: true };
       } else {
@@ -146,7 +141,8 @@ export const AuthProvider = ({ children }) => {
       }
     } catch (error) {
       console.error('Signup request failed:', error);
-      return { success: false, message: 'An error occurred. Please try again.' };
+      const errMsg = error.response?.data?.message || 'An error occurred. Please try again.';
+      return { success: false, message: errMsg };
     } finally {
       setLoading(false);
     }
@@ -155,6 +151,7 @@ export const AuthProvider = ({ children }) => {
   return (
     <AuthContext.Provider value={{ user, loading, login, signup, logout, checkAuthStatus, isClerkEnabled }}>
       {isClerkEnabled && <ClerkSubscriber onClerkState={setClerkState} />}
+      <RoleSelectionModal />
       {children}
     </AuthContext.Provider>
   );

@@ -4,7 +4,7 @@ const User = require('../models/User');
 // @route   POST /api/auth/signup
 const signup = async (req, res) => {
   try {
-    const { username, email, password, role } = req.body;
+    const { username, email, password, role, companyName } = req.body;
     
     // Check if user already exists
     const existingUser = await User.findOne({ $or: [{ email }, { username }] });
@@ -18,19 +18,88 @@ const signup = async (req, res) => {
     // Validate role (Admin role cannot be selected via public signup; managed strictly via .env)
     const validRole = ['jobseeker', 'employer'].includes(role) ? role : 'jobseeker';
 
+    if (validRole === 'employer' && (!companyName || !companyName.trim())) {
+      return res.status(400).json({
+        success: false,
+        message: 'Company Name is required for Employer registration'
+      });
+    }
+
     // Create new user
     const user = new User({
       username,
       email,
       password,
-      role: validRole
+      role: validRole,
+      hasSelectedRole: true
     });
     
     await user.save();
+
+    // If Employer, create or link Company Profile
+    if (validRole === 'employer' && companyName) {
+      const Company = require('../models/Company');
+      const mongoose = require('mongoose');
+      const db = mongoose.connection.db;
+
+      const trimmedCompName = companyName.trim();
+      let company = await Company.findOne({ 
+        name: { $regex: new RegExp(`^${trimmedCompName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } 
+      });
+
+      if (!company) {
+        const companyId = `comp_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+        company = new Company({
+          companyId,
+          name: trimmedCompName,
+          industry: 'Technology',
+          headquarters: 'Remote',
+          budget: 'Negotiable',
+          description: `Official corporate profile for ${trimmedCompName}`,
+          postedBy: user._id
+        });
+        await company.save();
+
+        try {
+          const compObj = {
+            companyId: company.companyId,
+            name: company.name,
+            industry: company.industry,
+            headquarters: company.headquarters,
+            budget: company.budget,
+            type: 'Full-Time',
+            description: company.description,
+            postedBy: user._id
+          };
+          await db.collection('companies').updateOne({ companyId: company.companyId }, { $set: compObj }, { upsert: true });
+          await db.collection('Companies').updateOne({ companyId: company.companyId }, { $set: compObj }, { upsert: true });
+        } catch (e) {
+          console.log('Notice syncing company native collection:', e.message);
+        }
+      } else {
+        if (!company.postedBy) {
+          company.postedBy = user._id;
+          await company.save();
+        }
+      }
+
+      user.companyId = company.companyId;
+      user.companyName = company.name;
+      await user.save();
+    }
     
     res.status(201).json({ 
       success: true, 
-      message: 'User created successfully' 
+      message: 'User created successfully',
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+        hasSelectedRole: true,
+        companyId: user.companyId || null,
+        companyName: user.companyName || null
+      }
     });
   } catch (err) {
     console.error('Error during signup:', err);
@@ -83,6 +152,12 @@ const login = async (req, res) => {
     req.session.userId = user._id;
     req.session.username = user.username;
     req.session.role = user.role;
+    req.session.hasSelectedRole = true;
+
+    if (!user.hasSelectedRole) {
+      user.hasSelectedRole = true;
+      await user.save();
+    }
     
     res.status(200).json({ 
       success: true, 
@@ -91,7 +166,10 @@ const login = async (req, res) => {
         id: user._id,
         username: user.username,
         email: user.email,
-        role: user.role
+        role: user.role,
+        hasSelectedRole: true,
+        companyId: user.companyId || null,
+        companyName: user.companyName || null
       }
     });
   } catch (err) {
@@ -129,21 +207,26 @@ const checkStatus = async (req, res) => {
   try {
     if (req.session && req.session.userId) {
       let role = req.session.role;
-      if (!role) {
-        const user = await User.findById(req.session.userId);
-        if (user) {
-          role = user.role;
-          req.session.role = user.role;
-        } else {
-          role = 'jobseeker';
-        }
+      let hasSelectedRole = req.session.hasSelectedRole;
+      const user = await User.findById(req.session.userId);
+      if (user) {
+        role = user.role;
+        hasSelectedRole = user.hasSelectedRole;
+        req.session.role = user.role;
+        req.session.hasSelectedRole = user.hasSelectedRole;
+      } else {
+        role = 'jobseeker';
       }
       res.status(200).json({ 
         authenticated: true,
         user: {
           id: req.session.userId,
           username: req.session.username,
-          role: role
+          email: user ? user.email : null,
+          role: role,
+          companyId: user ? user.companyId || null : null,
+          companyName: user ? user.companyName || null : null,
+          hasSelectedRole: user ? Boolean(user.hasSelectedRole) : false
         }
       });
     } else {
@@ -203,11 +286,13 @@ const getUserDetails = async (req, res) => {
 // @desc    Sync or create Google user in MongoDB Atlas
 const googleSync = async (req, res) => {
   try {
-    const { email, username, clerkId } = req.body;
+    const { email, username, clerkId, selectedRole } = req.body;
     
     if (!email) {
       return res.status(400).json({ success: false, message: 'Email is required' });
     }
+
+    const validRole = ['jobseeker', 'employer'].includes(selectedRole) ? selectedRole : null;
     
     // Check if user already exists in MongoDB Atlas by email
     let user = await User.findOne({ email: { $regex: new RegExp(`^${email.trim()}$`, 'i') } });
@@ -224,17 +309,24 @@ const googleSync = async (req, res) => {
       user = new User({
         username: uniqueUsername,
         email: email,
-        password: clerkId || `clerk_google_${Date.now()}`
+        password: clerkId || `clerk_google_${Date.now()}`,
+        role: validRole || 'jobseeker',
+        hasSelectedRole: Boolean(validRole)
       });
       
       await user.save();
       console.log('✅ New Google user saved to MongoDB Atlas:', user.email);
+    } else if (validRole && !user.hasSelectedRole) {
+      user.role = validRole;
+      user.hasSelectedRole = true;
+      await user.save();
     }
     
     // Save session in Express
     req.session.userId = user._id;
     req.session.username = user.username;
     req.session.role = user.role;
+    req.session.hasSelectedRole = user.hasSelectedRole;
     
     res.status(200).json({
       success: true,
@@ -243,11 +335,109 @@ const googleSync = async (req, res) => {
         id: user._id,
         username: user.username,
         email: user.email,
-        role: user.role
+        role: user.role,
+        hasSelectedRole: Boolean(user.hasSelectedRole)
       }
     });
   } catch (err) {
     console.error('Error syncing Google user to MongoDB:', err);
+    res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+// @desc    Select user role post-login/signup (e.g. after Google OAuth)
+// @route   POST /api/auth/select-role
+const selectRole = async (req, res) => {
+  try {
+    const { role, companyName } = req.body;
+    if (!['jobseeker', 'employer'].includes(role)) {
+      return res.status(400).json({ success: false, message: 'Invalid role selected' });
+    }
+
+    if (role === 'employer' && (!companyName || !companyName.trim())) {
+      return res.status(400).json({ success: false, message: 'Company Name is required for Employer account' });
+    }
+
+    if (!req.session || !req.session.userId) {
+      return res.status(401).json({ success: false, message: 'User not authenticated' });
+    }
+
+    const user = await User.findById(req.session.userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    user.role = role;
+    user.hasSelectedRole = true;
+
+    if (role === 'employer' && companyName) {
+      const Company = require('../models/Company');
+      const mongoose = require('mongoose');
+      const db = mongoose.connection.db;
+
+      const trimmedCompName = companyName.trim();
+      let company = await Company.findOne({ 
+        name: { $regex: new RegExp(`^${trimmedCompName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } 
+      });
+
+      if (!company) {
+        const companyId = `comp_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+        company = new Company({
+          companyId,
+          name: trimmedCompName,
+          industry: 'Technology',
+          headquarters: 'Remote',
+          budget: 'Negotiable',
+          description: `Official corporate profile for ${trimmedCompName}`,
+          postedBy: user._id
+        });
+        await company.save();
+
+        try {
+          const compObj = {
+            companyId: company.companyId,
+            name: company.name,
+            industry: company.industry,
+            headquarters: company.headquarters,
+            budget: company.budget,
+            type: 'Full-Time',
+            description: company.description,
+            postedBy: user._id
+          };
+          await db.collection('companies').updateOne({ companyId: company.companyId }, { $set: compObj }, { upsert: true });
+          await db.collection('Companies').updateOne({ companyId: company.companyId }, { $set: compObj }, { upsert: true });
+        } catch (e) {}
+      } else {
+        if (!company.postedBy) {
+          company.postedBy = user._id;
+          await company.save();
+        }
+      }
+
+      user.companyId = company.companyId;
+      user.companyName = company.name;
+    }
+
+    await user.save();
+
+    req.session.role = user.role;
+    req.session.hasSelectedRole = true;
+
+    res.status(200).json({
+      success: true,
+      message: 'Role updated successfully',
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+        companyId: user.companyId || null,
+        companyName: user.companyName || null,
+        hasSelectedRole: true
+      }
+    });
+  } catch (err) {
+    console.error('Error selecting role:', err);
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
@@ -481,7 +671,7 @@ const updateUserProfile = async (req, res) => {
       return res.status(401).json({ success: false, message: 'Authentication required' });
     }
 
-    const { username, email, password, companyName, industry, headquarters, budget, description } = req.body;
+    const { username, email, password, role, companyName, industry, headquarters, budget, description } = req.body;
 
     const user = await User.findById(userId);
     if (!user) {
@@ -492,6 +682,13 @@ const updateUserProfile = async (req, res) => {
     if (username && username.trim()) user.username = username.trim();
     if (email && email.trim()) user.email = email.toLowerCase().trim();
     if (password && password.trim()) user.password = password;
+
+    if (role && ['jobseeker', 'employer'].includes(role) && user.role !== 'admin') {
+      user.role = role;
+      user.hasSelectedRole = true;
+      req.session.role = role;
+      req.session.hasSelectedRole = true;
+    }
 
     await user.save();
 
@@ -553,6 +750,7 @@ module.exports = {
   checkStatus,
   getUserDetails,
   googleSync,
+  selectRole,
   createEmployerCompany,
   getAdminEmployers,
   updateAdminEmployer,

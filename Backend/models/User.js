@@ -21,6 +21,18 @@ const userSchema = new mongoose.Schema({
         enum: ['jobseeker', 'employer', 'admin'],
         default: 'jobseeker'
     },
+    hasSelectedRole: {
+        type: Boolean,
+        default: false
+    },
+    companyId: {
+        type: String,
+        default: null
+    },
+    companyName: {
+        type: String,
+        default: null
+    },
     profile: {
         fullName: String,
         phone: String,

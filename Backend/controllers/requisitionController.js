@@ -56,10 +56,51 @@ const createRequisition = async (req, res) => {
     try {
         const { title, companyId, companyName, industry, location, jobType, budget, techStack, description } = req.body;
 
-        if (!title || !companyName || !location || !description) {
+        if (!title || !location || !description) {
             return res.status(400).json({
                 success: false,
-                message: 'Job Title, Company Name, Location, and Description are required.'
+                message: 'Job Title, Location, and Description are required.'
+            });
+        }
+
+        const userId = req.session?.userId || req.headers['x-user-id'];
+        const role = req.session?.role;
+
+        let finalCompanyId = companyId;
+        let finalCompanyName = companyName;
+
+        // If employer role, strictly enforce that employer is assigned to a company profile
+        if (role === 'employer' || userId) {
+            const User = require('../models/User');
+            const currentUser = userId ? await User.findById(userId) : null;
+            const isEmployer = currentUser ? currentUser.role === 'employer' : role === 'employer';
+
+            if (isEmployer) {
+                // Find company profile associated with this employer
+                const assignedCompany = await Company.findOne({
+                    $or: [
+                        { postedBy: userId },
+                        { postedBy: String(userId) },
+                        ...(currentUser && currentUser.companyId ? [{ companyId: currentUser.companyId }] : [])
+                    ]
+                });
+
+                if (!assignedCompany) {
+                    return res.status(403).json({
+                        success: false,
+                        message: 'Forbidden: You must be assigned to a company profile before you can post job requisitions. Please create or assign a company first.'
+                    });
+                }
+
+                finalCompanyId = assignedCompany.companyId;
+                finalCompanyName = assignedCompany.name;
+            }
+        }
+
+        if (!finalCompanyName) {
+            return res.status(400).json({
+                success: false,
+                message: 'Company Name is required to post a job requisition.'
             });
         }
 
@@ -72,15 +113,15 @@ const createRequisition = async (req, res) => {
         const requisition = new Requisition({
             requisitionId,
             title,
-            companyId: companyId || `comp_${Date.now()}`,
-            companyName,
+            companyId: finalCompanyId || `comp_${Date.now()}`,
+            companyName: finalCompanyName,
             industry: industry || 'Technology',
             location,
             jobType: jobType || 'Full-Time',
             budget: budget || 'Negotiable',
             techStack: parsedTechStack,
             description,
-            postedBy: req.session ? req.session.userId : null
+            postedBy: userId || (req.session ? req.session.userId : null)
         });
 
         await requisition.save();

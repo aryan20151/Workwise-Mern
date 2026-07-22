@@ -69,9 +69,11 @@ const EmployerManageCompanies = () => {
     }
   };
 
+  const userId = user?.id || user?._id;
+
   useEffect(() => {
     fetchMyCompanies();
-  }, [user]);
+  }, [userId]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;

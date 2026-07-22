@@ -94,7 +94,13 @@ const EmployerPostRequisitionPage = () => {
     e.preventDefault();
     setError('');
 
-    if (!formData.title.trim() || !formData.companyName.trim() || !formData.location.trim() || !formData.description.trim()) {
+    if (user?.role === 'employer' && myCompanies.length === 0 && !user?.companyName) {
+      setError('You are not assigned to any company. Please create or link a company profile first before posting requisitions.');
+      toast.error('Company Profile required before posting requisitions.');
+      return;
+    }
+
+    if (!formData.title.trim() || (!formData.companyName.trim() && !user?.companyName) || !formData.location.trim() || !formData.description.trim()) {
       setError('Please fill in all required fields (Job Title, Company, Location, and Description).');
       return;
     }
@@ -153,7 +159,7 @@ const EmployerPostRequisitionPage = () => {
       </div>
 
       {/* Onboarding Guard: No Company Created Yet */}
-      {hasCheckedCompanies && user?.role === 'employer' && myCompanies.length === 0 ? (
+      {hasCheckedCompanies && user?.role === 'employer' && myCompanies.length === 0 && !user?.companyName ? (
         <div className="max-w-2xl mx-auto bg-white border border-slate-200 rounded-3xl p-10 shadow-xl text-center my-8">
           <div className="w-16 h-16 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center mx-auto mb-4 font-bold shadow-xs">
             <FiBriefcase className="w-8 h-8" />

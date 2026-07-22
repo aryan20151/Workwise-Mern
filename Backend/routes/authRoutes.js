@@ -7,6 +7,7 @@ const {
   checkStatus, 
   getUserDetails, 
   googleSync, 
+  selectRole,
   createEmployerCompany,
   getAdminEmployers,
   updateAdminEmployer,
@@ -21,6 +22,7 @@ router.post('/logout', logout);
 router.get('/status', checkStatus);
 router.post('/user-details', getUserDetails);
 router.post('/google-sync', googleSync);
+router.post('/select-role', requireAuth, selectRole);
 router.put('/profile', requireAuth, updateUserProfile);
 
 // Admin Master Setup & Employer Management Routes

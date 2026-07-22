@@ -17,6 +17,7 @@ const Signup = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [role, setRole] = useState('jobseeker');
+  const [companyName, setCompanyName] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -24,6 +25,7 @@ const Signup = () => {
   const handleGoogleSignup = async () => {
     if (isClerkEnabled && signUp) {
       try {
+        localStorage.setItem('workwise_google_signup_role', role);
         await signUp.authenticateWithRedirect({
           strategy: 'oauth_google',
           redirectUrl: '/sso-callback',
@@ -51,10 +53,17 @@ const Signup = () => {
       return;
     }
 
+    if (role === 'employer' && !companyName.trim()) {
+      const msg = 'Company Name is required for Employer accounts!';
+      setError(msg);
+      toast.error(msg);
+      return;
+    }
+
     setIsLoading(true);
 
     try {
-      const result = await signup(username, email, password, role);
+      const result = await signup(username, email, password, role, companyName);
       if (result.success) {
         const msg = 'Account created successfully! Redirecting to login...';
         setSuccess(msg);
@@ -176,6 +185,30 @@ const Signup = () => {
                 </button>
               </div>
             </div>
+
+            {role === 'employer' && (
+              <div className="animate-fadeIn">
+                <label htmlFor="companyName" className="block text-sm font-semibold text-slate-700 mb-1.5">
+                  Company Name <span className="text-rose-500">*</span>
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                    <FiBriefcase className="w-5 h-5" />
+                  </div>
+                  <input
+                    id="companyName"
+                    name="companyName"
+                    type="text"
+                    required
+                    value={companyName}
+                    onChange={(e) => setCompanyName(e.target.value)}
+                    className="block w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white transition-all text-sm font-medium"
+                    placeholder="e.g. Acme Corporation"
+                  />
+                </div>
+              </div>
+            )}
+
             <div>
               <label htmlFor="username" className="block text-sm font-semibold text-slate-700 mb-1.5">
                 Username
