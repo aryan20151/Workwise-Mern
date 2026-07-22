@@ -2,18 +2,26 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '../utils/toast';
 import { useAuth } from '../context/AuthContext';
+import { useCartStore } from '../store/useCartStore';
+import { useSavedJobsStore } from '../store/useSavedJobsStore';
 import { 
   FiFileText, FiPlus, FiEdit3, FiTrash2, FiSearch, FiMapPin, 
-  FiDollarSign, FiCode, FiBriefcase, FiRefreshCw, FiArrowLeft, FiAlertCircle, FiUserCheck, FiGlobe
+  FiDollarSign, FiCode, FiBriefcase, FiRefreshCw, FiArrowLeft, FiAlertCircle, FiUserCheck, FiGlobe, FiSend, FiBookmark
 } from 'react-icons/fi';
 
 const EmployerManageRequisitions = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
 
+  const savedJobs = useSavedJobsStore((state) => state.savedJobs);
+  const saveJob = useSavedJobsStore((state) => state.saveJob);
+  const removeSavedJob = useSavedJobsStore((state) => state.removeSavedJob);
+  const fetchSavedJobs = useSavedJobsStore((state) => state.fetchSavedJobs);
+  const isJobSaved = useSavedJobsStore((state) => state.isJobSaved);
+
   const [requisitions, setRequisitions] = useState([]);
   const [myRequisitions, setMyRequisitions] = useState([]);
-  const [filterMode, setFilterMode] = useState('my'); // 'my' vs 'all'
+  const [filterMode, setFilterMode] = useState('all'); // 'all' vs 'my'
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -52,7 +60,46 @@ const EmployerManageRequisitions = () => {
 
   useEffect(() => {
     fetchRequisitions();
+    if (user) {
+      fetchSavedJobs(true);
+    }
   }, [user]);
+
+  // Handle Save Requisition
+  const handleSaveRequisition = async (reqItem) => {
+    try {
+      const storedUser = (() => {
+        try { return JSON.parse(localStorage.getItem('workwise_user')); } catch (e) { return null; }
+      })();
+      const userId = user?.id || user?._id || storedUser?.id || storedUser?._id;
+      const userName = user?.username || user?.name || storedUser?.username || 'Candidate';
+      const userEmail = user?.email || storedUser?.email || 'candidate@example.com';
+
+      const response = await fetch('/api/cart', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(userId ? { 'x-user-id': userId } : {})
+        },
+        body: JSON.stringify({
+          companyId: reqItem.requisitionId || reqItem.companyId,
+          companyName: `${reqItem.companyName || 'Company'} — ${reqItem.title}`,
+          name: userName,
+          email: userEmail
+        })
+      });
+      const data = await response.json();
+      if (response.ok && data.success) {
+        toast.success(`Saved "${reqItem.title}" to your Saved Jobs!`);
+        useCartStore.getState().fetchCart(true);
+      } else {
+        toast.error(data.error || data.message || 'Failed to save requisition.');
+      }
+    } catch (err) {
+      toast.error('Error saving requisition.');
+    }
+  };
 
   // Delete Requisition
   const handleDelete = async (requisitionId, title) => {
@@ -88,18 +135,28 @@ const EmployerManageRequisitions = () => {
     }
   };
 
-  // Target list: Employers see their own posted requisitions; Admins see all platform requisitions
-  const targetList = user?.role === 'admin' ? requisitions : myRequisitions;
+  // Target list calculation
+  const isJobSeeker = !user?.role || user?.role === 'jobseeker';
+  const targetList = (isJobSeeker || user?.role === 'admin' || filterMode === 'all') ? requisitions : myRequisitions;
+
   const filteredList = targetList.filter((r) => {
     const term = searchQuery.toLowerCase().trim();
     if (!term) return true;
-    return (
-      (r.title || '').toLowerCase().includes(term) ||
-      (r.companyName || '').toLowerCase().includes(term) ||
-      (r.location || '').toLowerCase().includes(term) ||
-      (r.industry || '').toLowerCase().includes(term)
-    );
+
+    const titleMatch = (r.title || '').toLowerCase().includes(term);
+    const companyMatch = (r.companyName || '').toLowerCase().includes(term);
+    const locationMatch = (r.location || '').toLowerCase().includes(term);
+    const industryMatch = (r.industry || '').toLowerCase().includes(term);
+    const jobTypeMatch = (r.jobType || '').toLowerCase().includes(term);
+    const techStackMatch = Array.isArray(r.techStack)
+      ? r.techStack.some(t => t.toLowerCase().includes(term))
+      : (r.techStack || '').toLowerCase().includes(term);
+    const descMatch = (r.description || '').toLowerCase().includes(term);
+
+    return titleMatch || companyMatch || locationMatch || industryMatch || jobTypeMatch || techStackMatch || descMatch;
   });
+
+  const popularRoles = ['Full Stack', 'MERN', 'Frontend', 'Backend', 'React', 'Python', 'DevOps'];
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 min-h-[calc(100vh-4rem)]">
@@ -113,70 +170,111 @@ const EmployerManageRequisitions = () => {
           >
             <FiArrowLeft className="w-4 h-4" /> Back to Companies Directory
           </button>
-          <h1 className="text-3xl font-extrabold tracking-tight">Job Requisitions Hub</h1>
+          <h1 className="text-3xl font-extrabold tracking-tight">
+            {isJobSeeker ? 'Explore Job Roles & Requisitions' : 'Job Requisitions Hub'}
+          </h1>
           <p className="mt-1 text-slate-300 text-sm">
-            Manage open job postings, salary budgets, required tech stacks, and candidate requisitions.
+            Search open positions by role (Full Stack, MERN, Frontend, Backend), required tech stack, salary, and location.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-2">
-            <span className="px-3 py-1 bg-white/10 rounded-lg text-xs font-bold">Total Requisitions: {user?.role === 'admin' ? requisitions.length : myRequisitions.length}</span>
-          </div>
-          {/* <button
-            onClick={() => navigate('/post-requisition')}
-            className="px-5 py-2.5 rounded-xl text-sm font-bold transition-all flex items-center gap-2 bg-blue-600 text-white hover:bg-blue-500 shadow-lg shadow-blue-500/30 cursor-pointer"
-          >
-            <FiPlus className="w-4 h-4" />
-            <span>Post Requisition</span>
-          </button> */}
+          <span className="px-3 py-1.5 bg-white/10 rounded-xl text-xs font-bold border border-white/10">
+            Total Requisitions: {targetList.length}
+          </span>
+          {user?.role === 'employer' && (
+            <button
+              onClick={() => navigate('/post-requisition')}
+              className="px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 bg-blue-600 text-white hover:bg-blue-500 shadow-lg shadow-blue-500/30 cursor-pointer"
+            >
+              <FiPlus className="w-4 h-4" />
+              <span>Post Job</span>
+            </button>
+          )}
         </div>
       </div>
 
       {/* Requisitions Search & List */}
       <div className="space-y-6 animate-in fade-in duration-200">
         
-        {/* Onboarding Welcome Banner */}
-        {user?.role === 'employer' && myRequisitions.length === 0 && (
-          <div className="bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-amber-500/10 border border-amber-200/80 p-6 rounded-2xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-sm">
-            <div>
-              <h3 className="font-extrabold text-amber-900 text-base">
-                Welcome, {user?.username || user?.name || 'Employer'}!
-              </h3>
-              <p className="text-amber-800 text-xs mt-0.5">
-                No active job requisitions found. Click "Post Requisition" to create your position listings.
-              </p>
-            </div>
+        {/* Employer Filter Mode Switcher */}
+        {user?.role === 'employer' && (
+          <div className="flex items-center gap-2 bg-slate-100 p-1.5 rounded-xl w-fit border border-slate-200">
+            <button
+              onClick={() => setFilterMode('my')}
+              className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                filterMode === 'my' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              My Posted Requisitions ({myRequisitions.length})
+            </button>
+            <button
+              onClick={() => setFilterMode('all')}
+              className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                filterMode === 'all' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              All Platform Positions ({requisitions.length})
+            </button>
           </div>
         )}
 
-        {/* Search Bar */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-          <div className="relative w-full sm:w-96">
-            <FiSearch className="absolute left-3.5 top-3.5 text-slate-400 w-4 h-4" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search by job title, company, or location..."
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-600 shadow-sm"
-            />
+        {/* Search Bar & Quick Tags */}
+        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="relative w-full sm:w-1/2">
+              <FiSearch className="absolute left-3.5 top-3.5 text-slate-400 w-4 h-4" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search job roles (e.g. Full Stack, MERN, Frontend, Backend, React)..."
+                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-600 shadow-sm"
+              />
+              {searchQuery && (
+                <button 
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-3 text-xs text-slate-400 hover:text-slate-600 font-bold"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+
+            <button
+              onClick={fetchRequisitions}
+              className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-600 hover:text-blue-600 hover:border-blue-300 transition-colors shadow-sm cursor-pointer flex items-center gap-2 text-xs font-semibold"
+              title="Refresh Requisitions"
+            >
+              <FiRefreshCw className="w-4 h-4" />
+              <span>Refresh</span>
+            </button>
           </div>
 
-          <button
-            onClick={fetchRequisitions}
-            className="p-2.5 bg-white border border-slate-200 rounded-xl text-slate-600 hover:text-blue-600 hover:border-blue-300 transition-colors shadow-sm cursor-pointer"
-            title="Refresh Requisitions"
-          >
-            <FiRefreshCw className="w-4 h-4" />
-          </button>
+          {/* Quick Popular Role Tags */}
+          <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">Popular Roles:</span>
+            {popularRoles.map((role) => (
+              <button
+                key={role}
+                onClick={() => setSearchQuery(searchQuery === role ? '' : role)}
+                className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                  searchQuery.toLowerCase() === role.toLowerCase()
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                }`}
+              >
+                {role}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Loading */}
         {isLoading && (
           <div className="py-20 text-center">
             <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-            <p className="text-slate-500 text-sm font-semibold">Loading job requisitions...</p>
+            <p className="text-slate-500 text-sm font-semibold">Loading open job requisitions...</p>
           </div>
         )}
 
@@ -187,7 +285,7 @@ const EmployerManageRequisitions = () => {
             <p className="text-rose-600 text-xs mt-1">{error}</p>
             <button
               onClick={fetchRequisitions}
-              className="mt-4 px-4 py-2 bg-rose-600 text-white rounded-xl text-xs font-bold hover:bg-rose-700 transition-colors"
+              className="mt-4 px-4 py-2 bg-rose-600 text-white rounded-xl text-xs font-bold hover:bg-rose-700 transition-colors cursor-pointer"
             >
               Retry
             </button>
@@ -200,14 +298,13 @@ const EmployerManageRequisitions = () => {
             {filteredList.length === 0 ? (
               <div className="bg-white border border-slate-200 rounded-3xl p-12 text-center max-w-md mx-auto shadow-sm">
                 <FiFileText className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                <h3 className="text-lg font-bold text-slate-800">No Job Requisitions Found</h3>
-                <p className="text-slate-500 text-xs mt-1">Post a new job requisition to start receiving applicant submissions.</p>
+                <h3 className="text-lg font-bold text-slate-800">No Requisitions Found</h3>
+                <p className="text-slate-500 text-xs mt-1">No open job requisitions match your search criteria.</p>
                 <button
-                  onClick={() => navigate('/post-requisition')}
-                  className="mt-5 px-6 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 shadow-md shadow-blue-500/20 inline-flex items-center gap-2"
+                  onClick={() => setSearchQuery('')}
+                  className="mt-5 px-6 py-2.5 bg-blue-600 text-white rounded-xl text-xs font-bold hover:bg-blue-700 shadow-md shadow-blue-500/20 inline-flex items-center gap-2 cursor-pointer"
                 >
-                  <FiPlus className="w-4 h-4" />
-                  <span>Post Job Requisition</span>
+                  Clear Search
                 </button>
               </div>
             ) : (
@@ -221,7 +318,7 @@ const EmployerManageRequisitions = () => {
 
                   return (
                     <div
-                      key={reqItem.requisitionId}
+                      key={reqItem.requisitionId || reqItem._id}
                       className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-md hover:border-blue-400 transition-all flex flex-col justify-between"
                     >
                       <div>
@@ -245,7 +342,7 @@ const EmployerManageRequisitions = () => {
                         <div className="flex flex-wrap items-center gap-1.5 mb-3 text-xs">
                           <span className="px-2.5 py-0.5 bg-slate-100 text-slate-700 rounded-md font-semibold flex items-center gap-1">
                             <FiMapPin className="w-3 h-3 text-slate-400" />
-                            {reqItem.location}
+                            {reqItem.location || 'Remote'}
                           </span>
                           <span className="px-2.5 py-0.5 bg-emerald-50 text-emerald-700 rounded-md font-semibold flex items-center gap-1">
                             <FiDollarSign className="w-3 h-3 text-emerald-500" />
@@ -260,7 +357,7 @@ const EmployerManageRequisitions = () => {
                         {Array.isArray(reqItem.techStack) && reqItem.techStack.length > 0 && (
                           <div className="flex flex-wrap gap-1 mb-3">
                             {reqItem.techStack.map((tech, i) => (
-                              <span key={i} className="px-2 py-0.5 bg-slate-50 border border-slate-100 text-slate-600 text-[10px] font-bold rounded-md">
+                              <span key={i} className="px-2 py-0.5 bg-blue-50/80 border border-blue-100 text-blue-700 text-[10px] font-bold rounded-md">
                                 {tech}
                               </span>
                             ))}
@@ -274,20 +371,47 @@ const EmployerManageRequisitions = () => {
 
                       {/* Actions */}
                       <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-2">
-                        {isMine ? (
-                          <>
+                        <button
+                          onClick={() => navigate('/apply', { 
+                            state: { 
+                              companyId: reqItem.companyId || reqItem.requisitionId, 
+                              companyName: reqItem.companyName,
+                              jobTitle: reqItem.title 
+                            } 
+                          })}
+                          className="flex-1 py-2 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-blue-500/20 transition-all cursor-pointer"
+                        >
+                          <FiSend className="w-3.5 h-3.5" />
+                          <span>Apply Now</span>
+                        </button>
+
+                        {(() => {
+                          const reqId = reqItem.requisitionId || reqItem._id || reqItem.companyId;
+                          const isSaved = isJobSaved(reqId);
+                          return (
                             <button
-                              onClick={() => handleDelete(reqItem.requisitionId, reqItem.title)}
-                              className="w-full py-2 px-3 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                              onClick={() => isSaved ? removeSavedJob(reqId, reqItem.title) : saveJob(reqItem)}
+                              className={`py-2 px-3.5 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm ${
+                                isSaved 
+                                  ? 'bg-amber-500 text-white shadow-amber-500/20 hover:bg-amber-600' 
+                                  : 'bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200/80'
+                              }`}
+                              title={isSaved ? "Saved in your list (Click to unsave)" : "Bookmark / Save Requisition"}
                             >
-                              <FiTrash2 className="w-3.5 h-3.5" />
-                              <span>Delete Requisition</span>
+                              <FiBookmark className={`w-3.5 h-3.5 ${isSaved ? 'fill-white text-white' : 'text-amber-600'}`} />
+                              <span>{isSaved ? 'Saved' : 'Save'}</span>
                             </button>
-                          </>
-                        ) : (
-                          <span className="w-full text-center py-1.5 px-3 rounded-xl bg-slate-50 text-slate-400 text-xs font-semibold italic border border-slate-100">
-                            Posted by another employer
-                          </span>
+                          );
+                        })()}
+
+                        {isMine && (
+                          <button
+                            onClick={() => handleDelete(reqItem.requisitionId, reqItem.title)}
+                            className="py-2 px-3 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                            title="Delete Requisition"
+                          >
+                            <FiTrash2 className="w-3.5 h-3.5" />
+                          </button>
                         )}
                       </div>
                     </div>

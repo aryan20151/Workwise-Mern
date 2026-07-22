@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { 
   FiShield, FiUserPlus, FiBriefcase, FiMail, FiLock, FiUser, 
   FiMapPin, FiDollarSign, FiCheckCircle, FiAlertCircle, FiArrowLeft, FiRefreshCw,
-  FiEdit3, FiTrash2, FiX, FiSave, FiRotateCcw
+  FiEdit3, FiTrash2, FiX, FiSave, FiRotateCcw, FiEye, FiEyeOff
 } from 'react-icons/fi';
 
 const AdminMasterSetupPage = () => {
@@ -13,6 +13,7 @@ const AdminMasterSetupPage = () => {
   const { user } = useAuth();
   const formRef = useRef(null);
 
+  const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     username: '',
     email: '',
@@ -70,6 +71,26 @@ const AdminMasterSetupPage = () => {
   useEffect(() => {
     fetchMasterData();
   }, []);
+
+  const handleSelectCompanyDropdown = (e) => {
+    const selectedVal = e.target.value;
+    if (!selectedVal) return;
+
+    const selectedComp = provisionedList.find(c => (c.companyId && c.companyId === selectedVal) || c.name === selectedVal);
+    if (selectedComp) {
+      setFormData(prev => ({
+        ...prev,
+        companyName: selectedComp.name || '',
+        industry: selectedComp.industry || 'Technology',
+        headquarters: selectedComp.headquarters || '',
+        budget: selectedComp.budget || '',
+        description: selectedComp.description || ''
+      }));
+      if (selectedComp.companyId) {
+        setEditingCompanyId(selectedComp.companyId);
+      }
+    }
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -167,7 +188,7 @@ const AdminMasterSetupPage = () => {
 
         // 2. Update Company Profile if companyId exists
         if (editingCompanyId) {
-          await fetch(`/api/companies/${editingCompanyId}`, {
+          const resComp = await fetch(`/api/companies/${editingCompanyId}`, {
             method: 'PUT',
             credentials: 'include',
             headers: {
@@ -182,6 +203,12 @@ const AdminMasterSetupPage = () => {
               description: formData.description
             })
           });
+          const dataComp = await resComp.json();
+          if (!resComp.ok || !dataComp.success) {
+            setError(dataComp.message || 'Failed to update company profile.');
+            setIsSubmitting(false);
+            return;
+          }
         }
 
         if (resEmp.ok && dataEmp.success) {
@@ -381,24 +408,58 @@ const AdminMasterSetupPage = () => {
                 <div className="relative">
                   <FiLock className="absolute left-3.5 top-3.5 text-slate-400 w-4 h-4" />
                   <input
-                    type="password"
+                    type={showPassword ? "text" : "password"}
                     name="password"
                     required={!isEditing}
                     value={formData.password}
                     onChange={handleChange}
                     placeholder={isEditing ? "Type new password to update..." : "Set temporary password..."}
-                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-purple-600 focus:bg-white transition-all"
+                    className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-purple-600 focus:bg-white transition-all"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer"
+                    tabIndex={-1}
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? <FiEye className="w-4 h-4" /> : <FiEyeOff className="w-4 h-4" />}
+                  </button>
                 </div>
               </div>
             </div>
 
             {/* Section 2: Company Profile Details */}
             <div className="space-y-4">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-purple-700 flex items-center gap-1.5">
-                <FiBriefcase className="w-4 h-4" />
-                <span>2. Company Profile Details</span>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-purple-700 flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <FiBriefcase className="w-4 h-4" />
+                  <span>2. Company Profile Details</span>
+                </span>
+                <span className="text-[11px] font-normal text-slate-500">
+                  Select existing or type new
+                </span>
               </h3>
+
+              {/* Company API Dropdown Selector */}
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 flex items-center justify-between">
+                  <span>Assign Existing Company (API)</span>
+                  <span className="text-[10px] text-purple-600 font-semibold lowercase">({provisionedList.length} companies loaded)</span>
+                </label>
+                <select
+                  onChange={handleSelectCompanyDropdown}
+                  value=""
+                  className="w-full px-4 py-2.5 bg-purple-50/50 border border-purple-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-purple-600 focus:bg-white transition-all text-slate-800 cursor-pointer"
+                >
+                  <option value="">-- Select an Existing Company to Auto-Fill & Assign --</option>
+                  {provisionedList.map((comp) => (
+                    <option key={comp.companyId || comp._id || comp.name} value={comp.companyId || comp.name}>
+                      🏢 {comp.name} {comp.industry ? `(${comp.industry})` : ''} {comp.headquarters ? `- ${comp.headquarters}` : ''}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>

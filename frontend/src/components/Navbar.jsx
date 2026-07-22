@@ -2,22 +2,27 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCartStore } from '../store/useCartStore';
-import { FiShoppingCart, FiUser, FiLogOut, FiMenu, FiX, FiBriefcase, FiEdit3 } from 'react-icons/fi';
+import { useSavedJobsStore } from '../store/useSavedJobsStore';
+import { FiShoppingCart, FiUser, FiLogOut, FiMenu, FiX, FiBriefcase, FiEdit3, FiBookmark } from 'react-icons/fi';
 
 const Navbar = () => {
   const { user, logout } = useAuth();
   const cartCount = useCartStore((state) => state.cartCount);
   const fetchCart = useCartStore((state) => state.fetchCart);
   
+  const savedCount = useSavedJobsStore((state) => state.savedCount);
+  const fetchSavedJobs = useSavedJobsStore((state) => state.fetchSavedJobs);
+  
   const navigate = useNavigate();
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
-  // Fetch cart count when user changes
+  // Fetch cart & saved jobs counts when user changes
   useEffect(() => {
     if (user) {
       fetchCart();
+      fetchSavedJobs();
     }
   }, [user]);
 
@@ -63,41 +68,47 @@ const Navbar = () => {
           </div>
 
           {/* Desktop Nav Items */}
-          <div className="hidden md:flex items-center gap-2">
-            <Link to="/homepage" className={linkClass('/homepage')}>
-              Home
-            </Link>
-            <Link to="/companies" className={linkClass('/companies')}>
-              Companies
-            </Link>
-            <Link to="/contact" className={linkClass('/contact')}>
-              Contact
-            </Link>
-            {user?.role === 'admin' && (
-              <Link to="/manage-companies" className={linkClass('/manage-companies')}>
-                Company Profiles
+          {user && (
+            <div className="hidden md:flex items-center gap-2">
+              <Link to="/homepage" className={linkClass('/homepage')}>
+                Home
               </Link>
-            )}
-            {(user?.role === 'employer' || user?.role === 'admin') && (
-              <>
-                <Link to="/requisitions" className={linkClass('/requisitions')}>
-                  Job Requisitions
+              <Link to="/requisitions" className={linkClass('/requisitions')}>
+                Job Roles / Requisitions
+              </Link>
+              <Link to="/saved-requisitions" className={linkClass('/saved-requisitions')}>
+                Saved Jobs {savedCount > 0 && `(${savedCount})`}
+              </Link>
+              <Link to="/companies" className={linkClass('/companies')}>
+                Companies
+              </Link>
+              <Link to="/contact" className={linkClass('/contact')}>
+                Contact
+              </Link>
+              {user?.role === 'admin' && (
+                <Link to="/manage-companies" className={linkClass('/manage-companies')}>
+                  Company Profiles
                 </Link>
-                {user?.role === 'employer' && (
-                  <Link to="/post-requisition" className={linkClass('/post-requisition')}>
-                    Post Job
+              )}
+              {(user?.role === 'employer' || user?.role === 'admin') && (
+                <>
+                  {user?.role === 'employer' && (
+                    <Link to="/post-requisition" className={linkClass('/post-requisition')}>
+                      Post Job
+                    </Link>
+                  )}
+                  <Link to="/candidate-pipeline" className={linkClass('/candidate-pipeline')}>
+                    Candidate Pipeline
                   </Link>
-                )}
-                <Link to="/candidate-pipeline" className={linkClass('/candidate-pipeline')}>
-                  Candidate Pipeline
+                </>
+              )}
+              {user?.role === 'admin' && (
+                <Link to="/admin/master-setup" className={linkClass('/admin/master-setup')}>
+                  Admin Master Setup
                 </Link>
-              </>
-            )}
-            {user?.role === 'admin' && (
-              <Link to="/admin/master-setup" className={linkClass('/admin/master-setup')}>
-                Admin Master Setup
-              </Link>
-            )}
+              )}
+            </div>
+          )}
 
             {user ? (
               <>
@@ -229,138 +240,149 @@ const Navbar = () => {
             </button>
           </div>
         </div>
-      </div>
 
       {/* Mobile Menu Options */}
       {isOpen && (
         <div className="md:hidden border-t border-slate-100 bg-white px-4 py-3 space-y-1">
-          <Link
-            to="/homepage"
-            className={`block px-4 py-2 rounded-lg text-base font-semibold ${
-              isActive('/homepage') ? 'bg-blue-50 text-blue-600' : 'text-slate-600'
-            }`}
-          >
-            Home
-          </Link>
-          <Link
-            to="/companies"
-            className={`block px-4 py-2 rounded-lg text-base font-semibold ${
-              isActive('/companies') ? 'bg-blue-50 text-blue-600' : 'text-slate-600'
-            }`}
-          >
-            Companies
-          </Link>
-          <Link
-            to="/contact"
-            className={`block px-4 py-2 rounded-lg text-base font-semibold ${
-              isActive('/contact') ? 'bg-blue-50 text-blue-600' : 'text-slate-600'
-            }`}
-          >
-            Contact
-          </Link>
-          {user?.role === 'admin' && (
-            <Link
-              to="/manage-companies"
-              className={`block px-4 py-2 rounded-lg text-base font-semibold ${
-                isActive('/manage-companies') ? 'bg-blue-50 text-blue-600' : 'text-slate-600'
-              }`}
-            >
-              Company Profiles
-            </Link>
-          )}
-          {(user?.role === 'employer' || user?.role === 'admin') && (
+          {user ? (
             <>
+              <Link
+                to="/homepage"
+                className={`block px-4 py-2 rounded-lg text-base font-semibold ${
+                  isActive('/homepage') ? 'bg-blue-50 text-blue-600' : 'text-slate-600'
+                }`}
+              >
+                Home
+              </Link>
               <Link
                 to="/requisitions"
                 className={`block px-4 py-2 rounded-lg text-base font-semibold ${
                   isActive('/requisitions') ? 'bg-blue-50 text-blue-600' : 'text-slate-600'
                 }`}
               >
-                Job Requisitions
+                Job Roles / Requisitions
               </Link>
-              {user?.role === 'employer' && (
-                <Link
-                  to="/post-requisition"
-                  className={`block px-4 py-2 rounded-lg text-base font-semibold ${
-                    isActive('/post-requisition') ? 'bg-blue-50 text-blue-600' : 'text-slate-600'
-                  }`}
-                >
-                  Post Job
-                </Link>
-              )}
               <Link
-                to="/candidate-pipeline"
+                to="/saved-requisitions"
                 className={`block px-4 py-2 rounded-lg text-base font-semibold ${
-                  isActive('/candidate-pipeline') ? 'bg-blue-50 text-blue-600' : 'text-slate-600'
+                  isActive('/saved-requisitions') ? 'bg-blue-50 text-blue-600' : 'text-slate-600'
                 }`}
               >
-                Candidate Pipeline
+                Saved Jobs {savedCount > 0 && `(${savedCount})`}
               </Link>
-            </>
-          )}
-          {user?.role === 'admin' && (
-            <Link
-              to="/admin/master-setup"
-              className={`block px-4 py-2 rounded-lg text-base font-semibold ${
-                isActive('/admin/master-setup') ? 'bg-purple-50 text-purple-600' : 'text-purple-700'
-              }`}
-            >
-              Admin Master Setup
-            </Link>
-          )}
+              <Link
+                to="/companies"
+                className={`block px-4 py-2 rounded-lg text-base font-semibold ${
+                  isActive('/companies') ? 'bg-blue-50 text-blue-600' : 'text-slate-600'
+                }`}
+              >
+                Companies
+              </Link>
+              <Link
+                to="/contact"
+                className={`block px-4 py-2 rounded-lg text-base font-semibold ${
+                  isActive('/contact') ? 'bg-blue-50 text-blue-600' : 'text-slate-600'
+                }`}
+              >
+                Contact
+              </Link>
+              {user?.role === 'admin' && (
+                <Link
+                  to="/manage-companies"
+                  className={`block px-4 py-2 rounded-lg text-base font-semibold ${
+                    isActive('/manage-companies') ? 'bg-blue-50 text-blue-600' : 'text-slate-600'
+                  }`}
+                >
+                  Company Profiles
+                </Link>
+              )}
+              {(user?.role === 'employer' || user?.role === 'admin') && (
+                <>
+                  {user?.role === 'employer' && (
+                    <Link
+                      to="/post-requisition"
+                      className={`block px-4 py-2 rounded-lg text-base font-semibold ${
+                        isActive('/post-requisition') ? 'bg-blue-50 text-blue-600' : 'text-slate-600'
+                      }`}
+                    >
+                      Post Job
+                    </Link>
+                  )}
+                  <Link
+                    to="/candidate-pipeline"
+                    className={`block px-4 py-2 rounded-lg text-base font-semibold ${
+                      isActive('/candidate-pipeline') ? 'bg-blue-50 text-blue-600' : 'text-slate-600'
+                    }`}
+                  >
+                    Candidate Pipeline
+                  </Link>
+                </>
+              )}
+              {user?.role === 'admin' && (
+                <Link
+                  to="/admin/master-setup"
+                  className={`block px-4 py-2 rounded-lg text-base font-semibold ${
+                    isActive('/admin/master-setup') ? 'bg-purple-50 text-purple-600' : 'text-purple-700'
+                  }`}
+                >
+                  Admin Master Setup
+                </Link>
+              )}
 
-          {user ? (
-            <div className="border-t border-slate-100 pt-3 mt-3">
-              <div className="px-4 py-2 flex items-center gap-3">
-                {user.avatar ? (
-                  <img src={user.avatar} alt={user.username} className="w-9 h-9 rounded-full object-cover border border-slate-200" />
-                ) : (
-                  <div className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-slate-600">
-                    <FiUser className="w-5 h-5" />
+              <div className="border-t border-slate-100 pt-3 mt-3">
+                <div className="px-4 py-2 flex items-center gap-3">
+                  {user.avatar ? (
+                    <img src={user.avatar} alt={user.username} className="w-9 h-9 rounded-full object-cover border border-slate-200" />
+                  ) : (
+                    <div className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-slate-600">
+                      <FiUser className="w-5 h-5" />
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-xs text-slate-400">Logged in as</p>
+                    <p title={user.username} className="text-sm font-bold text-slate-700 truncate">{user.username}</p>
+                    <span className={`inline-block mt-0.5 px-2 py-0.5 text-[10px] font-extrabold uppercase rounded-full tracking-wide ${
+                      user.role === 'admin'
+                        ? 'bg-purple-100 text-purple-700'
+                        : user.role === 'employer'
+                        ? 'bg-indigo-100 text-indigo-700'
+                        : 'bg-blue-100 text-blue-700'
+                    }`}>
+                      {user.role || 'jobseeker'}
+                    </span>
                   </div>
-                )}
-                <div>
-                  <p className="text-xs text-slate-400">Logged in as</p>
-                  <p title={user.username} className="text-sm font-bold text-slate-700 truncate">{user.username}</p>
-                  <span className={`inline-block mt-0.5 px-2 py-0.5 text-[10px] font-extrabold uppercase rounded-full tracking-wide ${
-                    user.role === 'admin'
-                      ? 'bg-purple-100 text-purple-700'
-                      : user.role === 'employer'
-                      ? 'bg-indigo-100 text-indigo-700'
-                      : 'bg-blue-100 text-blue-700'
-                  }`}>
-                    {user.role || 'jobseeker'}
-                  </span>
                 </div>
+                <button
+                  onClick={() => {
+                    navigate('/profile');
+                    setIsOpen(false);
+                  }}
+                  className="w-full text-left px-4 py-2.5 text-base text-slate-700 hover:bg-slate-50 flex items-center gap-2 font-semibold"
+                >
+                  <FiEdit3 className="w-5 h-5 text-blue-600" />
+                  Edit Profile
+                </button>
+                <button
+                  onClick={handleLogout}
+                  className="w-full text-left px-4 py-2.5 text-base text-rose-600 hover:bg-rose-50 flex items-center gap-2 font-semibold"
+                >
+                  <FiLogOut className="w-5 h-5" />
+                  Sign Out
+                </button>
               </div>
-              <button
-                onClick={() => {
-                  navigate('/profile');
-                  setIsOpen(false);
-                }}
-                className="w-full text-left px-4 py-2.5 text-base text-slate-700 hover:bg-slate-50 flex items-center gap-2 font-semibold"
-              >
-                <FiEdit3 className="w-5 h-5 text-blue-600" />
-                Edit Profile
-              </button>
-              <button
-                onClick={handleLogout}
-                className="w-full text-left px-4 py-2.5 text-base text-rose-600 hover:bg-rose-50 flex items-center gap-2 font-semibold"
-              >
-                <FiLogOut className="w-5 h-5" />
-                Sign Out
-              </button>
-            </div>
+            </>
           ) : (
-            <div className="flex flex-col gap-2 pt-3 mt-3 border-t border-slate-100">
+            <div className="flex flex-col gap-2 py-2">
               <Link
                 to="/login"
+                onClick={() => setIsOpen(false)}
                 className="w-full text-center px-4 py-2 text-base font-semibold text-slate-700 border border-slate-200 rounded-lg"
               >
                 Sign In
               </Link>
               <Link
                 to="/signup"
+                onClick={() => setIsOpen(false)}
                 className="w-full text-center px-4 py-2 text-base font-semibold text-white bg-blue-600 rounded-lg"
               >
                 Sign Up

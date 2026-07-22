@@ -287,37 +287,73 @@ const createEmployerCompany = async (req, res) => {
 
     await newEmployer.save();
 
-    // Create Company Profile linked to this new employer
+    // Link to Existing Company or Create New Company Profile
     const Company = require('../models/Company');
-    const companyId = `comp_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    const mongoose = require('mongoose');
+    const db = mongoose.connection.db;
 
-    const newCompany = new Company({
-      companyId,
-      name: companyName.trim(),
-      industry: industry || 'Technology',
-      headquarters: headquarters || 'Remote',
-      budget: budget || 'Negotiable',
-      description: description || `Official corporate profile for ${companyName}`,
-      postedBy: newEmployer._id
+    const trimmedCompName = companyName.trim();
+    let existingComp = await Company.findOne({ 
+      name: { $regex: new RegExp(`^${trimmedCompName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } 
     });
 
-    await newCompany.save();
+    if (!existingComp) {
+      // Check native collections
+      const native1 = await db.collection('companies').findOne({ name: { $regex: new RegExp(`^${trimmedCompName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } });
+      const native2 = await db.collection('Companies').findOne({ name: { $regex: new RegExp(`^${trimmedCompName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } });
+      if (native1 || native2) {
+        existingComp = native1 || native2;
+      }
+    }
 
-    // Also sync directly to native MongoDB collections 'companies' and 'Companies' for cross-collection consistency
-    try {
-      const db = mongoose.connection.db;
-      const compObj = {
+    let targetCompany = null;
+
+    if (existingComp) {
+      // Link employer to existing company
+      const companyId = existingComp.companyId || `comp_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+      targetCompany = await Company.findOneAndUpdate(
+        { companyId },
+        { 
+          $set: { 
+            postedBy: newEmployer._id,
+            name: trimmedCompName,
+            ...(industry ? { industry } : {}),
+            ...(headquarters ? { headquarters } : {}),
+            ...(budget ? { budget } : {}),
+            ...(description ? { description } : {})
+          } 
+        },
+        { new: true, upsert: true }
+      );
+    } else {
+      // Create brand new company profile
+      const companyId = `comp_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+      targetCompany = new Company({
         companyId,
-        name: companyName.trim(),
+        name: trimmedCompName,
         industry: industry || 'Technology',
         headquarters: headquarters || 'Remote',
         budget: budget || 'Negotiable',
-        type: 'Full-Time',
-        description: description || `Official corporate profile for ${companyName}`,
+        description: description || `Official corporate profile for ${trimmedCompName}`,
+        postedBy: newEmployer._id
+      });
+      await targetCompany.save();
+    }
+
+    // Also sync directly to native MongoDB collections 'companies' and 'Companies' for cross-collection consistency
+    try {
+      const compObj = {
+        companyId: targetCompany.companyId,
+        name: targetCompany.name,
+        industry: targetCompany.industry,
+        headquarters: targetCompany.headquarters,
+        budget: targetCompany.budget,
+        type: targetCompany.type || 'Full-Time',
+        description: targetCompany.description,
         postedBy: newEmployer._id
       };
-      await db.collection('companies').updateOne({ companyId }, { $set: compObj }, { upsert: true });
-      await db.collection('Companies').updateOne({ companyId }, { $set: compObj }, { upsert: true });
+      await db.collection('companies').updateOne({ companyId: targetCompany.companyId }, { $set: compObj }, { upsert: true });
+      await db.collection('Companies').updateOne({ companyId: targetCompany.companyId }, { $set: compObj }, { upsert: true });
     } catch (dbErr) {
       console.log('Notice: Syncing to native collections:', dbErr.message);
     }

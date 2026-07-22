@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useSignIn } from '@clerk/clerk-react';
 import { toast } from '../utils/toast';
-import { FiUser, FiLock, FiAlertCircle, FiBriefcase } from 'react-icons/fi';
+import { FiUser, FiLock, FiAlertCircle, FiBriefcase, FiEye, FiEyeOff } from 'react-icons/fi';
 
 const Login = () => {
   const { user, login, isClerkEnabled } = useAuth();
@@ -12,6 +12,7 @@ const Login = () => {
   
   const [emailOrUsername, setEmailOrUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -143,13 +144,22 @@ const Login = () => {
                 <input
                   id="password"
                   name="password"
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="block w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white transition-all text-sm"
+                  className="block w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white transition-all text-sm"
                   placeholder="••••••••"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600 focus:outline-none cursor-pointer"
+                  tabIndex={-1}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? <FiEye className="w-5 h-5" /> : <FiEyeOff className="w-5 h-5" />}
+                </button>
               </div>
             </div>
           </div>

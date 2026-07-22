@@ -410,8 +410,9 @@ const Apply = () => {
             <div className="grid sm:grid-cols-2 gap-5">
               {/* Full Name */}
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1.5">
-                  Full Name <span className="text-rose-500">*</span>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5 flex items-center justify-between">
+                  <span>Full Name <span className="text-rose-500">*</span></span>
+                  {user && <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">✓ Verified Account</span>}
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -422,7 +423,12 @@ const Apply = () => {
                     required
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    className="block w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all text-sm"
+                    readOnly={Boolean(user)}
+                    className={`block w-full pl-10 pr-4 py-2.5 rounded-xl text-slate-900 font-semibold text-sm transition-all ${
+                      user 
+                        ? 'bg-slate-100 border border-slate-200 cursor-not-allowed text-slate-700' 
+                        : 'bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white'
+                    }`}
                     placeholder="Enter your full name"
                   />
                 </div>
@@ -430,8 +436,9 @@ const Apply = () => {
 
               {/* Email Address */}
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-1.5">
-                  Email Address <span className="text-rose-500">*</span>
+                <label className="block text-sm font-semibold text-slate-700 mb-1.5 flex items-center justify-between">
+                  <span>Email Address <span className="text-rose-500">*</span></span>
+                  {user && <span className="text-[10px] text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">✓ Verified Account</span>}
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
@@ -442,7 +449,12 @@ const Apply = () => {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="block w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all text-sm"
+                    readOnly={Boolean(user)}
+                    className={`block w-full pl-10 pr-4 py-2.5 rounded-xl text-slate-900 font-semibold text-sm transition-all ${
+                      user 
+                        ? 'bg-slate-100 border border-slate-200 cursor-not-allowed text-slate-700' 
+                        : 'bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white'
+                    }`}
                     placeholder="name@example.com"
                   />
                 </div>

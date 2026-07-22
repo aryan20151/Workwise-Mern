@@ -148,6 +148,21 @@ const createCompany = async (req, res) => {
             });
         }
 
+        // Duplicate Company Name Check (strict case-insensitive check: upper or lower case duplicates are forbidden)
+        const normalizedInput = name.trim().replace(/\s+/g, ' ');
+        const allCompanies = await fetchUnifiedCompanies();
+        const existingComp = allCompanies.find(c => {
+            if (!c.name) return false;
+            const existingNormalized = c.name.trim().replace(/\s+/g, ' ');
+            return existingNormalized.toLowerCase() === normalizedInput.toLowerCase();
+        });
+        if (existingComp) {
+            return res.status(400).json({
+                success: false,
+                message: `A company named "${existingComp.name}" already exists. Duplicate company names in uppercase, lowercase, or mixed case are not allowed.`
+            });
+        }
+
         // Limit check: Employers can create at most 1 company profile
         if (req.session?.role === 'employer' && req.session?.userId) {
             const userId = req.session.userId;
@@ -227,6 +242,25 @@ const updateCompany = async (req, res) => {
                 return res.status(403).json({
                     success: false,
                     message: 'Forbidden: You can only edit listings that you created.'
+                });
+            }
+        }
+
+        // Duplicate Company Name Check (if changing name - strict case-insensitive)
+        if (name) {
+            const normalizedInput = name.trim().replace(/\s+/g, ' ');
+            const allCompanies = await fetchUnifiedCompanies();
+            const existingComp = allCompanies.find(c => {
+                if (!c.name) return false;
+                const existingNormalized = c.name.trim().replace(/\s+/g, ' ');
+                const matchesName = existingNormalized.toLowerCase() === normalizedInput.toLowerCase();
+                const isDifferentComp = String(c.companyId || c._id) !== String(companyId);
+                return matchesName && isDifferentComp;
+            });
+            if (existingComp) {
+                return res.status(400).json({
+                    success: false,
+                    message: `Another company named "${existingComp.name}" already exists. Duplicate company names in uppercase or lowercase are not allowed.`
                 });
             }
         }

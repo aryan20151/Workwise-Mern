@@ -991,30 +991,42 @@ const Companies = () => {
             {/* Form */}
             <form onSubmit={handleQuickApplySubmit} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">
-                  Full Name <span className="text-rose-500">*</span>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1 flex items-center justify-between">
+                  <span>Full Name <span className="text-rose-500">*</span></span>
+                  {user && <span className="text-[10px] text-emerald-700 font-bold lowercase">🔒 account name</span>}
                 </label>
                 <input
                   type="text"
                   required
                   value={qaName}
                   onChange={(e) => setQaName(e.target.value)}
+                  readOnly={Boolean(user)}
                   placeholder="John Doe"
-                  className="block w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all"
+                  className={`block w-full px-3.5 py-2.5 rounded-xl text-slate-900 text-sm font-medium transition-all ${
+                    user 
+                      ? 'bg-slate-100 border border-slate-200 cursor-not-allowed text-slate-700' 
+                      : 'bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white'
+                  }`}
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1">
-                  Email Address <span className="text-rose-500">*</span>
+                <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1 flex items-center justify-between">
+                  <span>Email Address <span className="text-rose-500">*</span></span>
+                  {user && <span className="text-[10px] text-emerald-700 font-bold lowercase">🔒 account email</span>}
                 </label>
                 <input
                   type="email"
                   required
                   value={qaEmail}
                   onChange={(e) => setQaEmail(e.target.value)}
+                  readOnly={Boolean(user)}
                   placeholder="john@example.com"
-                  className="block w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all"
+                  className={`block w-full px-3.5 py-2.5 rounded-xl text-slate-900 text-sm font-medium transition-all ${
+                    user 
+                      ? 'bg-slate-100 border border-slate-200 cursor-not-allowed text-slate-700' 
+                      : 'bg-slate-50 border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white'
+                  }`}
                 />
               </div>
 

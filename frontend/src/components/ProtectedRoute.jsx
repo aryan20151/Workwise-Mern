@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import AccessDeniedPage from '../pages/AccessDeniedPage';
 
 const ProtectedRoute = ({ allowedRoles }) => {
   const { user, loading } = useAuth();
@@ -24,7 +25,7 @@ const ProtectedRoute = ({ allowedRoles }) => {
   if (allowedRoles && allowedRoles.length > 0) {
     const userRole = user.role || 'jobseeker';
     if (!allowedRoles.includes(userRole)) {
-      return <Navigate to="/homepage" replace />;
+      return <AccessDeniedPage requiredRole={allowedRoles.join(' or ')} />;
     }
   }
 

@@ -64,12 +64,12 @@ const getCart = async (req, res) => {
     }
 };
 
-// @desc    Add an application to the user's cart
+// @desc    Add an application or saved item to the user's cart / wishlist
 // @route   POST /api/cart
 const addToCart = async (req, res) => {
     try {
-        const { companyId, companyName, name, email, resumePath } = req.body;
-        console.log("Adding to cart:", { companyId, companyName, name, email });
+        let { companyId, companyName, name, email, resumePath } = req.body;
+        console.log("Adding to cart/saved items:", { companyId, companyName, name, email });
 
         const userId = await resolveUserId(req, email);
 
@@ -77,30 +77,43 @@ const addToCart = async (req, res) => {
             console.log('User not authenticated for cart addition');
             return res.status(401).json({ 
                 success: false, 
-                error: "User not authenticated" 
+                error: "User not authenticated. Please log in first." 
             });
+        }
+
+        // Auto-populate name & email from User account if omitted in body
+        if (!name || !email) {
+            const userObj = await User.findById(userId);
+            if (userObj) {
+                name = name || userObj.username || userObj.name || 'Candidate';
+                email = email || userObj.email || 'candidate@example.com';
+            }
         }
 
         const finalResumePath = resumePath || 'quick_apply_profile_resume.pdf';
 
         // Validate required fields
-        if (!companyId || !companyName || !name || !email) {
+        if (!companyId || !companyName) {
             return res.status(400).json({
                 success: false,
-                error: "Missing required fields: companyId, companyName, name, email"
+                error: "Missing required fields: companyId, companyName"
             });
         }
 
-        // Verify company exists
-        const company = await Company.findOne({ companyId });
-        if (!company) {
-            return res.status(404).json({
-                success: false,
-                error: "Company not found"
+        name = name || 'Candidate';
+        email = email || 'candidate@example.com';
+
+        // Check if item is already saved/added in cart for this user
+        const existingApp = await Application.findOne({ companyId, userId });
+        if (existingApp) {
+            return res.status(200).json({
+                success: true,
+                message: "Item already saved in your list",
+                application: existingApp
             });
         }
 
-        // Create and save application
+        // Create and save application / saved item
         const application = new Application({
             companyId,
             companyName,
@@ -111,18 +124,18 @@ const addToCart = async (req, res) => {
         });
 
         await application.save();
-        console.log("Application saved successfully:", application._id);
+        console.log("Application/Saved item saved successfully:", application._id);
 
         res.status(201).json({ 
             success: true, 
-            message: "Application added to cart",
+            message: "Item saved to list",
             application: application
         });
     } catch (err) {
         console.error("Error adding to cart:", err);
         res.status(500).json({ 
             success: false, 
-            error: "Failed to add application to cart" 
+            error: "Failed to save item" 
         });
     }
 };

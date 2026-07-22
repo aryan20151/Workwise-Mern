@@ -108,6 +108,7 @@ const companyRouter = require('./routes/companyRoutes');
 const cartRouter = require('./routes/cartRoutes');
 const contactRouter = require('./routes/contactRoutes');
 const aiRouter = require('./routes/aiRoutes');
+const savedRequisitionRouter = require('./routes/savedRequisitionRoutes');
 
 // Mount Routers
 app.use('/api/auth', authRouter);
@@ -115,6 +116,7 @@ app.use('/api/ai', aiRouter);
 app.use('/api', companyRouter);
 app.use('/', cartRouter);
 app.use('/', contactRouter);
+app.use('/', savedRequisitionRouter);
 
 // Direct page route handler (serves React built files relative to root level)
 const serveReactSPA = (req, res) => {

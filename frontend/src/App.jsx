@@ -21,6 +21,9 @@ import EmployerPostRequisitionPage from './pages/EmployerPostRequisitionPage';
 import EmployerCandidatePipelinePage from './pages/EmployerCandidatePipelinePage';
 import AdminMasterSetupPage from './pages/AdminMasterSetupPage';
 import UserProfilePage from './pages/UserProfilePage';
+import SavedRequisitions from './pages/SavedRequisitions';
+import NotFoundPage from './pages/NotFoundPage';
+import AccessDeniedPage from './pages/AccessDeniedPage';
 
 function App() {
   return (
@@ -46,14 +49,17 @@ function App() {
                 <Route path="/homepage" element={<Home />} />
                 <Route path="/profile" element={<UserProfilePage />} />
                 <Route path="/companies" element={<Companies />} />
+                <Route path="/requisitions" element={<EmployerManageRequisitions />} />
+                <Route path="/saved-requisitions" element={<SavedRequisitions />} />
+                <Route path="/saved-jobs" element={<SavedRequisitions />} />
                 <Route path="/apply" element={<Apply />} />
                 <Route path="/cart" element={<Cart />} />
                 <Route path="/contact" element={<Contact />} />
+                <Route path="/access-denied" element={<AccessDeniedPage />} />
               </Route>
 
               {/* Employer / Admin Job Requisition & Pipeline Routes */}
               <Route element={<ProtectedRoute allowedRoles={['employer', 'admin']} />}>
-                <Route path="/requisitions" element={<EmployerManageRequisitions />} />
                 <Route path="/post-requisition" element={<EmployerPostRequisitionPage />} />
                 <Route path="/candidate-pipeline" element={<EmployerCandidatePipelinePage />} />
                 <Route path="/kanban" element={<Navigate to="/candidate-pipeline" replace />} />
@@ -66,8 +72,8 @@ function App() {
                 <Route path="/admin/master-setup" element={<AdminMasterSetupPage />} />
               </Route>
 
-              {/* Catch-all 404 Redirect */}
-              <Route path="*" element={<Navigate to="/homepage" replace />} />
+              {/* Catch-all 404 Page */}
+              <Route path="*" element={<NotFoundPage />} />
             </Routes>
           </main>
           <Footer />

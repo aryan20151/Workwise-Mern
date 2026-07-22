@@ -1,37 +1,44 @@
-# WorkWise - Job Search & Application Portal
+# WorkWise - Job Search, Job Requisitions & Candidate Hiring Portal
 
-WorkWise is a modern, responsive job search and application portal built as a decoupled Full-Stack Web Application. It consists of a React Single-Page Application (SPA) frontend powered by Vite and Tailwind CSS, and a Node.js Express backend API connected to MongoDB Atlas.
+**WorkWise** is a modern, responsive job search, job requisition, and recruitment portal built as a decoupled Full-Stack Web Application. It features role-based access control (**Job Seeker**, **Employer**, **Admin**), Gemini AI ATS integration, a Job Requisition search hub, a Saved Jobs bookmarking system, an Application Cart, and an Employer Candidate Drag & Drop Kanban Pipeline.
 
 ---
 
 ## 🚀 Key Features
 
-*   **User Authentication**: Secure register and login systems using session-based authentication (`express-session`) and bcrypt password hashing.
-*   **Role Management & User Profiles**: User profiles supporting customized education, experience, and skill lists for Job Seekers and Employers.
-*   **Job & Company Directory**: Browse, search, and filter companies based on industry or name using MongoDB text searches.
-*   **Application Cart**: Add companies you are interested in to a "Job Cart" to track applications and upload your resume.
-*   **Resume Upload System**: Built-in resume submission utilizing `multer` on the Express API server to store applicant files securely.
-*   **Contact Form**: Contact/feedback system communicating directly with database models.
-*   **Production Serving**: The Express server is capable of serving compiled production-ready React client assets as a unified host.
+* **Role-Based Authentication & Access Control**: 
+  - **Job Seekers**: Browse and search open job roles (Full Stack, MERN, Frontend, Backend, etc.), save jobs to wishlist, analyze resume match with AI, and submit applications.
+  - **Employers**: Post job requisitions, manage open position listings, and track candidate applications across an interactive Drag-and-Drop Kanban pipeline (`Pending` → `Submitted` → `Accepted` / `Rejected`).
+  - **Admins**: Access Admin Master Setup to create employers, manage company profiles, and assign companies via API dropdowns.
+* **Job Requisition Search Hub**: Search open positions by specific roles (*Full Stack*, *MERN*, *Frontend*, *Backend*, *React*, *Python*), tech stack tags, salary budget, and location.
+* **Gemini AI ATS Match & Cover Letter Generator**:
+  - AI ATS match score analysis comparing candidate skills against job descriptions.
+  - Automatic CV parsing and skill extraction.
+  - One-click AI cover letter generation.
+* **Saved Jobs Wishlist**: Dedicated bookmarking system (`/saved-jobs`) powered by `SavedRequisition` models, separate from the application cart.
+* **Application Cart (`/cart`)**: Tracks draft candidate applications and resume submissions.
+* **Case-Insensitive Duplicate Prevention**: Company creation enforces strict normalized space and case-insensitive uniqueness (`GOOGLE` vs `google`).
+* **Password Visibility Toggle**: Interactive eye icon toggle (`FiEye` / `FiEyeOff`) across login, signup, user profile, and admin setup forms.
+* **Custom Error Handling**: Graceful **404 Page Not Found** and **403 Access Denied** pages.
 
 ---
 
 ## 🛠️ Tech Stack
 
 ### Frontend
-*   **Library**: React (v19)
-*   **Routing**: React Router DOM (v7)
-*   **Build Tool**: Vite
-*   **Styling**: Tailwind CSS (v4) with `@tailwindcss/vite`
-*   **Icons**: React Icons
-*   **Linting**: Oxlint
+* **Library**: React (v19)
+* **Routing**: React Router DOM (v7)
+* **Build Tool**: Vite
+* **State Management**: Zustand
+* **Styling**: Tailwind CSS with `@tailwindcss/vite`
+* **UI Components & Icons**: React Icons (`fi`), Lucide React, Sonner Toasts
 
 ### Backend
-*   **Environment**: Node.js & Express
-*   **Database**: MongoDB Atlas via Mongoose
-*   **Authentication**: Session-based (`express-session`), `bcryptjs`
-*   **File Uploads**: Multer
-*   **CORS**: Configured for local development (`http://localhost:5173`)
+* **Environment**: Node.js & Express
+* **Database**: MongoDB Atlas via Mongoose
+* **AI Integration**: Google Gemini AI API (`@google/genai`)
+* **Authentication**: Session-based (`express-session`), `bcryptjs`
+* **File Uploads**: Multer (Resume & document uploads)
 
 ---
 
@@ -41,30 +48,25 @@ WorkWise is a modern, responsive job search and application portal built as a de
 workwise-ejs/
 ├── Backend/                    # Express Backend API Server
 │   ├── config/                 # Mongoose Database setup
-│   ├── controllers/            # Request handlers for routes
-│   ├── models/                 # Mongoose Schemas (User, Company, Application)
-│   ├── routes/                 # API endpoint definitions
-│   ├── importCompanies.js      # Utility script to import companies from JSON
-│   ├── seedCompanies.js        # Utility script to inspect MongoDB data
-│   ├── server.js               # Entry point of the Express Backend
+│   ├── controllers/            # Handlers (auth, company, requisition, cart, savedRequisition, ai)
+│   ├── middleware/             # Auth & Role verification (requireAuth, authorizeRoles)
+│   ├── models/                 # Mongoose Schemas (User, Company, Requisition, SavedRequisition, Application)
+│   ├── routes/                 # Express API routes
+│   ├── server.js               # Express Backend entry point
 │   └── package.json            # Backend dependencies
 │
 ├── frontend/                   # React Frontend Client (Vite)
 │   ├── src/
-│   │   ├── components/         # Common UI Components (Navbar, Footer, ProtectedRoute)
+│   │   ├── components/         # Navbar, Footer, ProtectedRoute, PublicRoute, EditProfileModal
 │   │   ├── context/            # AuthProvider Context
-│   │   ├── pages/              # Views (Home, Login, Signup, Companies, Cart, Apply, Contact)
-│   │   ├── App.jsx             # Main router configurations
-│   │   └── main.jsx            # Application mount point
+│   │   ├── pages/              # Home, Login, Signup, Companies, Requisitions, SavedRequisitions, Cart, Apply, Pipeline, AdminMasterSetup, NotFound, AccessDenied
+│   │   ├── store/              # Zustand stores (useCartStore, useSavedJobsStore)
+│   │   ├── App.jsx             # Main Router configuration
+│   │   └── main.jsx            # React root mount point
 │   ├── package.json            # Frontend dependencies
-│   └── vite.config.js          # Vite and Tailwind config
+│   └── vite.config.js          # Vite config
 │
-├── functions/                  # Netlify/Serverless legacy functions configuration
-│   ├── package.json
-│   └── server.js
-│
-├── uploads/                    # Directory where resumes/uploaded files are stored
-├── vercel.json                 # Deployment configuration for Vercel
+├── uploads/                    # Directory for uploaded resume files
 └── README.md                   # Project documentation
 ```
 
@@ -72,108 +74,82 @@ workwise-ejs/
 
 ## 🗃️ Data Models
 
-### Users
-Stores account and resume builder data.
-*   `username` (String, unique, required)
-*   `email` (String, unique, required)
-*   `password` (String, hashed using bcrypt)
-*   `role` (String, enum: `['jobseeker', 'employer']`, default: `'jobseeker'`)
-*   `profile` (Nested object with `fullName`, `phone`, `address`, `skills[]`, `experience[]`, `education[]`)
+### Users (`User.js`)
+* `username` (String, unique, required)
+* `email` (String, unique, required)
+* `password` (String, hashed using bcrypt)
+* `role` (String, enum: `['jobseeker', 'employer', 'admin']`, default: `'jobseeker'`)
+* `profile` (Object: `fullName`, `phone`, `address`, `skills[]`, `experience[]`, `education[]`)
 
-### Companies
-Stores company directory details.
-*   `companyId` (String, unique, required)
-*   `name` (String, required)
-*   `industry` (String, required)
-*   `headquarters` (String, required)
-*   `description` (String, required)
+### Requisitions (`Requisition.js`)
+* `requisitionId` (String, unique, required)
+* `title` (String, required - e.g. "Full Stack MERN Developer")
+* `companyId` (String)
+* `companyName` (String, required)
+* `industry` (String)
+* `location` (String)
+* `budget` (String)
+* `jobType` (String)
+* `techStack` (Array of Strings)
+* `description` (String)
+* `postedBy` (ObjectId referencing User)
 
-### Applications (Job Cart)
-Stores specific job applications/saved opportunities and resume references.
-*   `userId` (ObjectId referencing `User`, required)
-*   `companyId` (String, required)
-*   `companyName` (String, required)
-*   `name` (String, required)
-*   `email` (String, required)
-*   `resumePath` (String, required path of uploaded file)
-*   `status` (String, enum: `['pending', 'submitted', 'accepted', 'rejected']`, default: `'pending'`)
+### Saved Requisitions (`SavedRequisition.js`)
+* `userId` (ObjectId referencing User, required)
+* `requisitionId` (String, required)
+* `title` (String, required)
+* `companyId` (String)
+* `companyName` (String)
+* `location` (String)
+* `budget` (String)
+* `jobType` (String)
+* `techStack` (Array of Strings)
+
+### Applications (`Application.js`)
+* `userId` (ObjectId referencing User, required)
+* `companyId` (String, required)
+* `companyName` (String, required)
+* `name` (String, required)
+* `email` (String, required)
+* `resumePath` (String)
+* `status` (String, enum: `['pending', 'submitted', 'accepted', 'rejected']`, default: `'pending'`)
+
+---
+
+## 📡 API Reference Summary
+
+| Endpoint | Method | Description | Role Required |
+| :--- | :--- | :--- | :--- |
+| `/api/auth/login` | POST | Authenticates user & sets session | Public |
+| `/api/auth/register` | POST | Registers user account | Public |
+| `/api/requisitions` | GET | List & search open platform job requisitions | Authenticated |
+| `/api/requisitions` | POST | Create new job requisition | Employer / Admin |
+| `/api/saved-requisitions` | GET / POST | Fetch or save bookmarked job roles | Authenticated |
+| `/api/saved-requisitions/:id` | DELETE | Remove bookmarked job role | Authenticated |
+| `/api/cart` | GET / POST | Fetch or add draft applications to cart | Authenticated |
+| `/api/companies` | GET | List company profiles | Authenticated |
+| `/api/companies` | POST / PUT | Create or update company profile | Admin |
+| `/api/applications/employer` | GET | Fetch candidate applications for Kanban | Employer / Admin |
+| `/api/applications/:id/status`| PATCH | Update candidate status (accepted/rejected) | Employer / Admin |
+| `/api/ai/match-score` | POST | Calculate Gemini AI ATS match score | Authenticated |
+| `/api/ai/generate-cover-letter`| POST | Generate AI Cover Letter | Authenticated |
 
 ---
 
 ## ⚙️ Getting Started
 
-### Prerequisites
-*   Node.js (v18 or higher)
-*   NPM
-*   MongoDB Atlas Account & URI
-
-### 1. Database Configuration
-1. Create a `.env` file inside the `Backend/` directory:
-   ```bash
-   touch Backend/.env
-   ```
-2. Add your MongoDB Atlas connection string inside `Backend/.env`:
-   ```env
-   MONGO_URI=your_mongodb_connection_string
-   ```
-
-### 2. Importing Seed Data
-To populate the database with initial company listings, create a `data/companies.json` file in the root directory (or import standard seed information) and execute:
+### 1. Backend Setup
 ```bash
-node Backend/importCompanies.js
+cd Backend
+npm install
+npm run dev
 ```
-To check current database size and industry distribution:
+*Backend server runs at [http://localhost:5000](http://localhost:5000)*
+
+### 2. Frontend Setup
 ```bash
-node Backend/seedCompanies.js
+cd frontend
+npm install
+npm run dev
 ```
-
-### 3. Running in Development Mode
-To run the frontend and backend concurrently in separate terminal sessions:
-
-*   **Run Express Backend**:
-    ```bash
-    cd Backend
-    npm install
-    npm run dev
-    ```
-    *Starts the API server at [http://localhost:5002](http://localhost:5002)*
-
-*   **Run React Frontend**:
-    ```bash
-    cd frontend
-    npm install
-    npm run dev
-    ```
-    *Starts the Vite development server at [http://localhost:5173](http://localhost:5173)*
-
-### 4. Running in Production
-To serve the React SPA directly from the Express backend:
-1. Build the production version of the frontend:
-   ```bash
-   cd frontend
-   npm run build
-   ```
-   *This compiles files into the `frontend/dist/` directory.*
-2. Start the Backend server in production:
-   ```bash
-   cd ../Backend
-   npm start
-   ```
-   *The Express app will serve the compiled React app at [http://localhost:5002](http://localhost:5002) and handle client routing gracefully.*
-
----
-
-## 📡 API Reference
-
-| Endpoint | Method | Description | Auth Required |
-| :--- | :--- | :--- | :--- |
-| `/api/auth/register` | POST | Registers a new user account | No |
-| `/api/auth/login` | POST | Authenticates user & sets session | No |
-| `/api/auth/logout` | POST | Destroys current user session | Yes |
-| `/api/auth/profile` | GET / PUT | Fetch or update profile information | Yes |
-| `/api/companies` | GET | List all available companies | Yes |
-| `/api/companies/search`| GET | Query companies by name/industry | Yes |
-| `/api/cart` | GET | Fetch user's active applications | Yes |
-| `/api/cart` | POST | Add a company/application to cart | Yes |
-| `/api/cart/:companyId` | DELETE | Remove application from cart | Yes |
-| `/upload-resume` | POST | Upload PDF/Doc resume file using Multer | Yes |
+*Frontend dev server runs at [http://localhost:5173](http://localhost:5173)*

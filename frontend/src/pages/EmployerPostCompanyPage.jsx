@@ -21,6 +21,8 @@ const EmployerPostCompanyPage = () => {
     description: ''
   });
 
+  const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [myCompanies, setMyCompanies] = useState([]);
   const [hasChecked, setHasChecked] = useState(false);
 
@@ -60,6 +62,13 @@ const EmployerPostCompanyPage = () => {
 
     if (!formData.name.trim() || !formData.headquarters.trim() || !formData.description.trim()) {
       setError('Please fill in all required fields (Company Name, Location, and Description).');
+      return;
+    }
+
+    const cleanName = formData.name.trim().replace(/\s+/g, ' ').toLowerCase();
+    const existing = myCompanies.find(c => c.name && c.name.trim().replace(/\s+/g, ' ').toLowerCase() === cleanName);
+    if (existing) {
+      setError(`A company named "${existing.name}" already exists. Duplicate company names in uppercase or lowercase are not allowed.`);
       return;
     }
 
