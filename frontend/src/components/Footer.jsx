@@ -46,7 +46,7 @@ const Footer = () => {
                 </Link>
               </li>
               <li>
-                <Link to="/homepage" className={activeClass('/homepage')}>
+                <Link to="/requisitions" className={activeClass('/requisitions')}>
                   Job Vacancies
                 </Link>
               </li>

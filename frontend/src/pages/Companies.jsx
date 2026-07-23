@@ -7,7 +7,7 @@ import AddCompanyModal from '../components/AddCompanyModal';
 import { 
   FiSearch, FiMapPin, FiBriefcase, FiChevronDown, FiChevronUp, 
   FiFilter, FiX, FiDollarSign, FiClock, FiUserCheck, FiChevronLeft, FiChevronRight, 
-  FiChevronsLeft, FiChevronsRight, FiRotateCcw, FiSliders, FiZap, FiArrowRight, FiSend, FiFileText, FiUpload, FiPlus
+  FiChevronsLeft, FiChevronsRight, FiRotateCcw, FiSliders, FiZap, FiArrowRight, FiSend, FiFileText, FiUpload, FiPlus, FiCheck, FiAlertCircle
 } from 'react-icons/fi';
 
 const Companies = () => {
@@ -91,18 +91,34 @@ const Companies = () => {
   // Toggle state for Advanced Filters Drawer (Default CLOSED)
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
-  // Filter States
-  const [selectedIndustry, setSelectedIndustry] = useState('All');
+  // Filter States (Industry is Multi-Select)
+  const [selectedIndustries, setSelectedIndustries] = useState([]); // Multi-select array of industries
   const [selectedLocationType, setSelectedLocationType] = useState('All');
   const [selectedJobType, setSelectedJobType] = useState('All');
   const [selectedSalary, setSelectedSalary] = useState('All');
   const [selectedExperience, setSelectedExperience] = useState('All');
   const [sortBy, setSortBy] = useState('name-asc');
 
-  // Pagination States
+  const handleToggleIndustry = (ind) => {
+    if (ind === 'All') {
+      setSelectedIndustries([]);
+      return;
+    }
+    setSelectedIndustries((prev) => {
+      if (prev.includes(ind)) {
+        return prev.filter((item) => item !== ind);
+      } else {
+        return [...prev, ind];
+      }
+    });
+  };
+
+  // Pagination & Validation States
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(6);
   const [jumpPageInput, setJumpPageInput] = useState('1');
+  const [searchError, setSearchError] = useState('');
+  const [isPageLoading, setIsPageLoading] = useState(false);
 
   const hasFetchedRef = React.useRef(false);
 
@@ -176,11 +192,12 @@ const Companies = () => {
       });
     }
 
-    // Advanced Filter 1: Industry
-    if (selectedIndustry !== 'All') {
-      result = result.filter(c => 
-        (c.industry || '').toLowerCase().trim() === selectedIndustry.toLowerCase().trim()
-      );
+    // Advanced Filter 1: Industry (Multi-Select)
+    if (selectedIndustries.length > 0) {
+      result = result.filter(c => {
+        const compInd = (c.industry || '').toLowerCase().trim();
+        return selectedIndustries.some(ind => ind.toLowerCase().trim() === compInd);
+      });
     }
 
     // Advanced Filter 2: Location Type / Mode
@@ -232,12 +249,15 @@ const Companies = () => {
 
     setFilteredCompanies(result);
     setCurrentPage(1); // Reset page on query/filter update
-  }, [searchQuery, selectedIndustry, selectedLocationType, selectedJobType, selectedSalary, selectedExperience, sortBy, companies]);
+  }, [searchQuery, selectedIndustries, selectedLocationType, selectedJobType, selectedSalary, selectedExperience, sortBy, companies]);
 
-  // Live Suggestions logic
+  // Live Suggestions logic & validation
   const handleSearchChange = (e) => {
     const query = e.target.value;
     setSearchQuery(query);
+    if (query.trim()) {
+      setSearchError('');
+    }
 
     if (query.trim() === '') {
       setSuggestions([]);
@@ -253,6 +273,7 @@ const Companies = () => {
 
   const handleSuggestionClick = (name) => {
     setSearchQuery(name || '');
+    setSearchError('');
     setSuggestions([]);
   };
 
@@ -261,10 +282,11 @@ const Companies = () => {
     setSuggestions([]);
     
     if (searchQuery.trim() === '') {
-      setFilteredCompanies(companies);
+      setSearchError('Please type something in search to look for companies.');
       return;
     }
 
+    setSearchError('');
     setIsLoading(true);
     setError('');
 
@@ -295,7 +317,7 @@ const Companies = () => {
   };
 
   const resetAllAdvancedFilters = () => {
-    setSelectedIndustry('All');
+    setSelectedIndustries([]);
     setSelectedLocationType('All');
     setSelectedJobType('All');
     setSelectedSalary('All');
@@ -312,13 +334,13 @@ const Companies = () => {
   // Advanced Filters Count ONLY (Excludes text search query)
   const activeFiltersCount = useMemo(() => {
     let count = 0;
-    if (selectedIndustry !== 'All') count++;
+    if (selectedIndustries.length > 0) count += selectedIndustries.length;
     if (selectedLocationType !== 'All') count++;
     if (selectedJobType !== 'All') count++;
     if (selectedSalary !== 'All') count++;
     if (selectedExperience !== 'All') count++;
     return count;
-  }, [selectedIndustry, selectedLocationType, selectedJobType, selectedSalary, selectedExperience]);
+  }, [selectedIndustries, selectedLocationType, selectedJobType, selectedSalary, selectedExperience]);
 
   // Pagination Calculations
   const totalItems = filteredCompanies.length;
@@ -364,8 +386,14 @@ const Companies = () => {
 
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= totalPages) {
-      setCurrentPage(newPage);
-      window.scrollTo({ top: 200, behavior: 'smooth' });
+      if (newPage !== currentPage) {
+        setIsPageLoading(true);
+        setCurrentPage(newPage);
+        window.scrollTo({ top: 200, behavior: 'smooth' });
+        setTimeout(() => {
+          setIsPageLoading(false);
+        }, 300);
+      }
     }
   };
 
@@ -443,11 +471,11 @@ const Companies = () => {
 
       {/* Search Bar & Advanced Filter Toggle Button */}
       <div className="max-w-4xl mx-auto mb-8">
-        <div className="flex flex-col sm:flex-row items-center gap-3">
-          {/* Main Search Input & Submit Button */}
-          <div className="relative flex-1 w-full">
-            <form onSubmit={handleSearchSubmit} className="flex gap-2">
-              <div className="relative flex-1">
+        <div className="flex flex-col sm:flex-row items-start gap-3">
+          {/* Main Search Form */}
+          <form onSubmit={handleSearchSubmit} className="flex-1 w-full flex flex-col sm:flex-row items-start gap-2.5">
+            <div className="relative flex-1 w-full">
+              <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
                   <FiSearch className="w-5 h-5" />
                 </div>
@@ -456,55 +484,69 @@ const Companies = () => {
                   value={searchQuery}
                   onChange={handleSearchChange}
                   placeholder="Search by company name, industry, or location..."
-                  className="block w-full pl-11 pr-10 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 shadow-sm text-sm transition-all"
+                  className={`block w-full pl-11 pr-10 py-3 bg-white border ${
+                    searchError ? 'border-rose-400 focus:ring-rose-500' : 'border-slate-200 focus:ring-blue-600'
+                  } rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 shadow-xs text-sm transition-all`}
                 />
                 {searchQuery && (
                   <button
                     type="button"
-                    onClick={() => setSearchQuery('')}
-                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600"
+                    onClick={() => {
+                      setSearchQuery('');
+                      setSearchError('');
+                    }}
+                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 cursor-pointer"
                   >
                     <FiX className="w-4 h-4" />
                   </button>
                 )}
               </div>
 
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="px-5 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-sm text-sm flex items-center gap-2 transition-all shrink-0 disabled:opacity-70 disabled:cursor-not-allowed"
-              >
-                {isLoading ? (
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                ) : (
-                  <FiSearch className="w-4 h-4" />
-                )}
-                <span>{isLoading ? 'Searching...' : 'Search'}</span>
-              </button>
-            </form>
+              {/* Inline Search Validation Banner (Aligned under input) */}
+              {searchError && (
+                <div className="mt-2 text-xs font-bold text-rose-600 bg-rose-50 border border-rose-200 px-3.5 py-2 rounded-xl flex items-center gap-2 animate-in fade-in slide-in-from-top-1 duration-150 shadow-2xs">
+                  <FiAlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
+                  <span>{searchError}</span>
+                </div>
+              )}
 
-            {/* Suggestions List */}
-            {suggestions.length > 0 && (
-              <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-50 py-1 overflow-hidden">
-                {suggestions.map((name, index) => (
-                  <button
-                    key={index}
-                    onClick={() => handleSuggestionClick(name)}
-                    className="w-full text-left px-4 py-2 hover:bg-slate-50 text-sm text-slate-700 font-medium flex items-center justify-between transition-colors"
-                  >
-                    <span>{name}</span>
-                    <span className="text-xs text-blue-600 font-semibold">Select</span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+              {/* Suggestions List */}
+              {suggestions.length > 0 && (
+                <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-50 py-1 overflow-hidden">
+                  {suggestions.map((name, index) => (
+                    <button
+                      key={index}
+                      type="button"
+                      onClick={() => handleSuggestionClick(name)}
+                      className="w-full text-left px-4 py-2 hover:bg-slate-50 text-sm text-slate-700 font-medium flex items-center justify-between transition-colors cursor-pointer"
+                    >
+                      <span>{name}</span>
+                      <span className="text-xs text-blue-600 font-semibold">Select</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="w-full sm:w-auto px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-xs text-sm flex items-center justify-center gap-2 transition-all shrink-0 disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
+            >
+              {isLoading ? (
+                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              ) : (
+                <FiSearch className="w-4 h-4" />
+              )}
+              <span>{isLoading ? 'Searching...' : 'Search'}</span>
+            </button>
+          </form>
 
           {/* Advanced Filters Button */}
           <button
             type="button"
             onClick={() => setIsFilterOpen(!isFilterOpen)}
-            className={`w-full sm:w-auto px-4 py-3 rounded-xl font-semibold text-sm transition-all duration-200 flex items-center justify-center gap-2 border shadow-sm shrink-0 ${
+            className={`w-full sm:w-auto px-4 py-3 rounded-xl font-semibold text-sm transition-all duration-200 flex items-center justify-center gap-2 border shadow-xs shrink-0 cursor-pointer ${
               isFilterOpen || activeFiltersCount > 0
                 ? 'bg-blue-600 text-white border-blue-600 shadow-md shadow-blue-500/20 hover:bg-blue-700'
                 : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
@@ -528,12 +570,12 @@ const Companies = () => {
           <div className="mt-3 flex flex-wrap items-center gap-2 px-1">
             <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Active Filters:</span>
 
-            {selectedIndustry !== 'All' && (
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 text-blue-800 rounded-lg text-xs font-semibold border border-blue-100">
-                Industry: {selectedIndustry}
-                <button onClick={() => setSelectedIndustry('All')} className="hover:text-blue-950"><FiX className="w-3.5 h-3.5" /></button>
+            {selectedIndustries.length > 0 && selectedIndustries.map((ind) => (
+              <span key={ind} className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 text-blue-800 rounded-lg text-xs font-semibold border border-blue-100">
+                Industry: {ind}
+                <button onClick={() => handleToggleIndustry(ind)} className="hover:text-blue-950 cursor-pointer"><FiX className="w-3.5 h-3.5" /></button>
               </span>
-            )}
+            ))}
 
             {selectedLocationType !== 'All' && (
               <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-50 text-emerald-800 rounded-lg text-xs font-semibold border border-emerald-100">
@@ -700,26 +742,48 @@ const Companies = () => {
               </div>
             </div>
 
-            {/* Filter 5: Industry Selection */}
+            {/* Filter 5: Industry Selection (Multi-Select) */}
             <div>
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1">
-                <FiBriefcase className="w-3.5 h-3.5 text-slate-400" /> Industry Sector
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex items-center justify-between">
+                <span className="flex items-center gap-1">
+                  <FiBriefcase className="w-3.5 h-3.5 text-slate-400" /> Industry Sector (Multi-Select)
+                </span>
+                {selectedIndustries.length > 0 && (
+                  <span className="text-[11px] font-extrabold text-blue-600">
+                    {selectedIndustries.length} selected
+                  </span>
+                )}
               </label>
               <div className="flex flex-wrap gap-2">
-                {uniqueIndustries.map((ind) => (
-                  <button
-                    key={ind}
-                    type="button"
-                    onClick={() => setSelectedIndustry(ind)}
-                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                      selectedIndustry === ind
-                        ? 'bg-blue-600 text-white font-bold shadow-sm hover:bg-blue-700'
-                        : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                    }`}
-                  >
-                    {ind === 'All' ? 'All Industries' : ind}
-                  </button>
-                ))}
+                <button
+                  type="button"
+                  onClick={() => setSelectedIndustries([])}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                    selectedIndustries.length === 0
+                      ? 'bg-blue-600 text-white font-bold shadow-xs'
+                      : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                  }`}
+                >
+                  All Industries
+                </button>
+                {uniqueIndustries.filter(ind => ind !== 'All').map((ind) => {
+                  const isSelected = selectedIndustries.includes(ind);
+                  return (
+                    <button
+                      key={ind}
+                      type="button"
+                      onClick={() => handleToggleIndustry(ind)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ${
+                        isSelected
+                          ? 'bg-blue-600 text-white font-bold shadow-xs'
+                          : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                      }`}
+                    >
+                      {isSelected && <FiCheck className="w-3.5 h-3.5 text-white shrink-0" />}
+                      <span>{ind}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -796,7 +860,7 @@ const Companies = () => {
                       type="button"
                       onClick={() => {
                         setSearchQuery('');
-                        setSelectedIndustry(ind);
+                        setSelectedIndustries([ind]);
                       }}
                       className="px-3 py-1 bg-slate-100 hover:bg-blue-50 hover:text-blue-700 text-slate-700 rounded-lg text-xs font-semibold transition-all"
                     >
@@ -813,6 +877,11 @@ const Companies = () => {
                 <FiRotateCcw className="w-3.5 h-3.5" />
                 Reset Search & Filters
               </button>
+            </div>
+          ) : isPageLoading ? (
+            <div className="py-20 flex flex-col items-center justify-center gap-3 bg-white/80 backdrop-blur-xs rounded-3xl border border-slate-200/80 my-4 shadow-sm animate-in fade-in duration-150">
+              <div className="w-9 h-9 border-3 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+              <p className="text-xs font-extrabold text-blue-700 animate-pulse">Loading Page {currentPage}...</p>
             </div>
           ) : (
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 items-stretch">

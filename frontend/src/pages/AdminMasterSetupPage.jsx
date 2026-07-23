@@ -6,7 +6,7 @@ import {
   FiShield, FiUserPlus, FiBriefcase, FiMail, FiLock, FiUser, 
   FiMapPin, FiDollarSign, FiCheckCircle, FiAlertCircle, FiArrowLeft, FiRefreshCw,
   FiEdit3, FiTrash2, FiX, FiSave, FiRotateCcw, FiEye, FiEyeOff,
-  FiSearch, FiChevronDown, FiChevronUp, FiCheck
+  FiSearch, FiChevronDown, FiChevronUp, FiCheck, FiChevronLeft, FiChevronRight, FiChevronsLeft, FiChevronsRight
 } from 'react-icons/fi';
 import SearchableIndustrySelect from '../components/SearchableIndustrySelect';
 
@@ -41,6 +41,62 @@ const AdminMasterSetupPage = () => {
   // States for Searchable & Alphabetically Sorted Company Dropdown
   const [isCompanyDropdownOpen, setIsCompanyDropdownOpen] = useState(false);
   const [companySearchQuery, setCompanySearchQuery] = useState('');
+
+  // Employer directory search & pagination states
+  const [empDirectorySearch, setEmpDirectorySearch] = useState('');
+  const [empCurrentPage, setEmpCurrentPage] = useState(1);
+  const [empItemsPerPage, setEmpItemsPerPage] = useState(5);
+  const [empJumpInput, setEmpJumpInput] = useState('1');
+  const [isEmpPageLoading, setIsEmpPageLoading] = useState(false);
+
+  const handleEmpPageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= empTotalPages && newPage !== empCurrentPage) {
+      setIsEmpPageLoading(true);
+      setEmpCurrentPage(newPage);
+      setTimeout(() => {
+        setIsEmpPageLoading(false);
+      }, 250);
+    }
+  };
+
+  // Filtered & Paginated Employers List
+  const filteredEmployers = useMemo(() => {
+    const term = empDirectorySearch.toLowerCase().trim();
+    if (!term) return employerList;
+    return employerList.filter((emp) => {
+      const username = (emp.username || '').toLowerCase();
+      const email = (emp.email || '').toLowerCase();
+      const compName = (emp.company?.name || '').toLowerCase();
+      const industry = (emp.company?.industry || '').toLowerCase();
+      return username.includes(term) || email.includes(term) || compName.includes(term) || industry.includes(term);
+    });
+  }, [employerList, empDirectorySearch]);
+
+  const empTotalItems = filteredEmployers.length;
+  const empTotalPages = Math.ceil(empTotalItems / empItemsPerPage) || 1;
+  const empStartIndex = (empCurrentPage - 1) * empItemsPerPage;
+  const empEndIndex = Math.min(empStartIndex + empItemsPerPage, empTotalItems);
+  const paginatedEmployers = filteredEmployers.slice(empStartIndex, empEndIndex);
+
+  useEffect(() => {
+    setEmpCurrentPage(1);
+  }, [empDirectorySearch]);
+
+  useEffect(() => {
+    setEmpJumpInput(String(empCurrentPage));
+  }, [empCurrentPage]);
+
+  const handleEmpJumpSubmit = (e) => {
+    if (e) e.preventDefault();
+    const pageNum = parseInt(empJumpInput, 10);
+    if (!isNaN(pageNum)) {
+      const clamped = Math.max(1, Math.min(pageNum, empTotalPages));
+      setEmpCurrentPage(clamped);
+      setEmpJumpInput(String(clamped));
+    } else {
+      setEmpJumpInput(String(empCurrentPage));
+    }
+  };
 
   // Fetch all companies & registered employers
   const fetchMasterData = async () => {
@@ -715,83 +771,187 @@ const AdminMasterSetupPage = () => {
 
         {/* Master Provisioned Employers Directory Column */}
         <div className="lg:col-span-5 space-y-4">
-          <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm flex items-center justify-between">
-            <div>
-              <h3 className="font-extrabold text-slate-900 text-base">Employer Accounts</h3>
-              <p className="text-xs text-slate-500">Live directory of all active employer accounts.</p>
+          <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-extrabold text-slate-900 text-base">Employer Accounts</h3>
+                <p className="text-xs text-slate-500">Live directory of all active employer accounts.</p>
+              </div>
+              <button
+                onClick={fetchMasterData}
+                className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-600 hover:text-purple-700 transition-colors shadow-xs cursor-pointer"
+                title="Refresh"
+              >
+                <FiRefreshCw className="w-4 h-4" />
+              </button>
             </div>
-            <button
-              onClick={fetchMasterData}
-              className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-600 hover:text-purple-700 transition-colors shadow-xs cursor-pointer"
-              title="Refresh"
-            >
-              <FiRefreshCw className="w-4 h-4" />
-            </button>
+
+            {/* Directory Search Bar */}
+            <div className="relative">
+              <FiSearch className="absolute left-3.5 top-3 text-slate-400 w-4 h-4" />
+              <input
+                type="text"
+                value={empDirectorySearch}
+                onChange={(e) => setEmpDirectorySearch(e.target.value)}
+                placeholder="Search employer by name, email, company..."
+                className="w-full pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-purple-600 focus:bg-white transition-all text-slate-800"
+              />
+              {empDirectorySearch && (
+                <button
+                  type="button"
+                  onClick={() => setEmpDirectorySearch('')}
+                  className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+                >
+                  <FiX className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
           </div>
 
-          <div className="space-y-3 max-h-[750px] overflow-y-auto pr-1">
+          <div className="space-y-3">
             {isLoading ? (
-              <div className="py-12 text-center text-slate-400 text-xs font-semibold">
+              <div className="py-12 text-center text-slate-400 text-xs font-semibold bg-white border border-slate-200 rounded-2xl">
                 Loading employer records...
               </div>
-            ) : employerList.length === 0 ? (
+            ) : filteredEmployers.length === 0 ? (
               <div className="bg-white border border-slate-200 rounded-2xl p-8 text-center text-slate-500 text-xs">
-                No employer accounts found.
+                No employer accounts found matching "{empDirectorySearch}".
+              </div>
+            ) : isEmpPageLoading ? (
+              <div className="py-12 flex flex-col items-center justify-center gap-2 bg-white border border-slate-200 rounded-2xl animate-in fade-in duration-150">
+                <div className="w-7 h-7 border-2 border-purple-600 border-t-transparent rounded-full animate-spin" />
+                <p className="text-xs font-bold text-purple-700 animate-pulse">Loading Page {empCurrentPage}...</p>
               </div>
             ) : (
-              employerList.map((emp) => {
-                const isSelected = editingUserId === emp._id;
-                return (
-                  <div
-                    key={emp._id}
-                    className={`bg-white border rounded-2xl p-5 shadow-xs transition-all flex flex-col justify-between gap-3 ${
-                      isSelected ? 'border-amber-400 ring-2 ring-amber-400/20 bg-amber-50/20' : 'border-slate-200 hover:border-purple-300'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold text-slate-900">{emp.username}</span>
-                          <span className="text-[10px] font-extrabold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-md uppercase">
-                            {emp.role}
-                          </span>
+              <>
+                {paginatedEmployers.map((emp) => {
+                  const isSelected = editingUserId === emp._id;
+                  return (
+                    <div
+                      key={emp._id}
+                      className={`bg-white border rounded-2xl p-5 shadow-xs transition-all flex flex-col justify-between gap-3 ${
+                        isSelected ? 'border-amber-400 ring-2 ring-amber-400/20 bg-amber-50/20' : 'border-slate-200 hover:border-purple-300'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold text-slate-900">{emp.username}</span>
+                            <span className="text-[10px] font-extrabold text-purple-700 bg-purple-50 px-2 py-0.5 rounded-md uppercase">
+                              {emp.role}
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
+                            <FiMail className="w-3.5 h-3.5 text-slate-400" />
+                            <span>{emp.email}</span>
+                          </p>
+                          <p className="text-xs text-slate-600 font-medium mt-1 flex items-center gap-1">
+                            <FiBriefcase className="w-3.5 h-3.5 text-blue-600" />
+                            <span>Company: <strong>{emp.company ? emp.company.name : 'Not Assigned'}</strong></span>
+                          </p>
                         </div>
-                        <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
-                          <FiMail className="w-3.5 h-3.5 text-slate-400" />
-                          <span>{emp.email}</span>
-                        </p>
-                        <p className="text-xs text-slate-600 font-medium mt-1 flex items-center gap-1">
-                          <FiBriefcase className="w-3.5 h-3.5 text-blue-600" />
-                          <span>Company: <strong>{emp.company ? emp.company.name : 'Not Assigned'}</strong></span>
-                        </p>
-                      </div>
 
-                      {/* Action Controls for Admin */}
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <button
-                          onClick={() => handleOpenEdit(emp)}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${
-                            isSelected 
-                              ? 'bg-amber-500 text-white shadow-sm' 
-                              : 'bg-slate-100 text-slate-700 hover:bg-purple-100 hover:text-purple-700'
-                          }`}
-                          title="Populate details to form for editing"
-                        >
-                          <FiEdit3 className="w-3.5 h-3.5" />
-                          <span>{isSelected ? 'Editing' : 'Edit'}</span>
-                        </button>
-                        <button
-                          onClick={() => handleDeleteEmployer(emp._id, emp.username)}
-                          className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
-                          title="Delete Employer Account"
-                        >
-                          <FiTrash2 className="w-4 h-4" />
-                        </button>
+                        {/* Action Controls for Admin */}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            onClick={() => handleOpenEdit(emp)}
+                            className={`px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${
+                              isSelected 
+                                ? 'bg-amber-500 text-white shadow-sm' 
+                                : 'bg-slate-100 text-slate-700 hover:bg-purple-100 hover:text-purple-700'
+                            }`}
+                            title="Populate details to form for editing"
+                          >
+                            <FiEdit3 className="w-3.5 h-3.5" />
+                            <span>{isSelected ? 'Editing' : 'Edit'}</span>
+                          </button>
+                          <button
+                            onClick={() => handleDeleteEmployer(emp._id, emp.username)}
+                            className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition-colors cursor-pointer"
+                            title="Delete Employer Account"
+                          >
+                            <FiTrash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
                     </div>
+                  );
+                })}
+
+                {/* Directory Pagination Bar */}
+                {empTotalItems > 0 && (
+                  <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                    <span className="text-[11px] font-semibold text-slate-500">
+                      Showing {empStartIndex + 1}–{empEndIndex} of {empTotalItems}
+                    </span>
+
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => handleEmpPageChange(1)}
+                        disabled={empCurrentPage === 1}
+                        className="p-1.5 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-30 cursor-pointer"
+                        title="First Page"
+                      >
+                        <FiChevronsLeft className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleEmpPageChange(empCurrentPage - 1)}
+                        disabled={empCurrentPage === 1}
+                        className="p-1.5 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-30 cursor-pointer"
+                        title="Previous Page"
+                      >
+                        <FiChevronLeft className="w-3.5 h-3.5" />
+                      </button>
+
+                      <span className="px-2 font-bold text-slate-700">
+                        {empCurrentPage} / {empTotalPages}
+                      </span>
+
+                      <button
+                        onClick={() => handleEmpPageChange(empCurrentPage + 1)}
+                        disabled={empCurrentPage === empTotalPages}
+                        className="p-1.5 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-30 cursor-pointer"
+                        title="Next Page"
+                      >
+                        <FiChevronRight className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleEmpPageChange(empTotalPages)}
+                        disabled={empCurrentPage === empTotalPages}
+                        className="p-1.5 border border-slate-200 rounded-lg hover:bg-slate-50 disabled:opacity-30 cursor-pointer"
+                        title="Last Page"
+                      >
+                        <FiChevronsRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+
+                    <form onSubmit={handleEmpJumpSubmit} className="flex items-center gap-1">
+                      <input
+                        type="number"
+                        min={1}
+                        max={empTotalPages}
+                        value={empJumpInput}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          if (val === '') setEmpJumpInput('');
+                          else {
+                            const p = parseInt(val, 10);
+                            if (!isNaN(p)) setEmpJumpInput(p > empTotalPages ? String(empTotalPages) : val);
+                          }
+                        }}
+                        placeholder={String(empCurrentPage)}
+                        className="w-12 px-1.5 py-1 bg-slate-50 border border-slate-200 rounded-lg text-center font-bold text-slate-800 text-[11px]"
+                      />
+                      <button
+                        type="submit"
+                        className="px-2 py-1 bg-purple-700 hover:bg-purple-800 text-white font-bold text-[11px] rounded-lg cursor-pointer"
+                      >
+                        Go
+                      </button>
+                    </form>
                   </div>
-                );
-              })
+                )}
+              </>
             )}
           </div>
         </div>

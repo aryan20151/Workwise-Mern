@@ -6,7 +6,8 @@ import { useCartStore } from '../store/useCartStore';
 import { useSavedJobsStore } from '../store/useSavedJobsStore';
 import { 
   FiFileText, FiPlus, FiEdit3, FiTrash2, FiSearch, FiMapPin, 
-  FiDollarSign, FiCode, FiBriefcase, FiRefreshCw, FiArrowLeft, FiAlertCircle, FiUserCheck, FiGlobe, FiSend, FiBookmark
+  FiDollarSign, FiCode, FiBriefcase, FiRefreshCw, FiArrowLeft, FiAlertCircle, FiUserCheck, FiGlobe, FiSend, FiBookmark,
+  FiChevronLeft, FiChevronRight, FiChevronsLeft, FiChevronsRight, FiX
 } from 'react-icons/fi';
 
 const EmployerManageRequisitions = () => {
@@ -158,6 +159,68 @@ const EmployerManageRequisitions = () => {
 
   const popularRoles = ['Full Stack', 'MERN', 'Frontend', 'Backend', 'React', 'Python', 'DevOps'];
 
+  // Pagination States
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(6);
+  const [jumpPageInput, setJumpPageInput] = useState('1');
+  const [isPageLoading, setIsPageLoading] = useState(false);
+
+  // Pagination Calculations
+  const totalItems = filteredList.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
+  const paginatedList = filteredList.slice(startIndex, endIndex);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, filterMode]);
+
+  useEffect(() => {
+    setJumpPageInput(String(currentPage));
+  }, [currentPage]);
+
+  const handleJumpInputChange = (e) => {
+    const val = e.target.value;
+    if (val === '') {
+      setJumpPageInput('');
+      return;
+    }
+    const pageNum = parseInt(val, 10);
+    if (!isNaN(pageNum)) {
+      if (pageNum > totalPages) {
+        setJumpPageInput(String(totalPages));
+      } else {
+        setJumpPageInput(val);
+      }
+    } else {
+      setJumpPageInput(val);
+    }
+  };
+
+  const handleJumpSubmit = (e) => {
+    if (e) e.preventDefault();
+    const pageNum = parseInt(jumpPageInput, 10);
+    if (!isNaN(pageNum)) {
+      const clampedPage = Math.max(1, Math.min(pageNum, totalPages));
+      handlePageChange(clampedPage);
+      setJumpPageInput(String(clampedPage));
+    } else {
+      setJumpPageInput(String(currentPage));
+    }
+  };
+
+  const handlePageChange = (newPage) => {
+    if (newPage >= 1 && newPage <= totalPages && newPage !== currentPage) {
+      setIsPageLoading(true);
+      setCurrentPage(newPage);
+      window.scrollTo({ top: 200, behavior: 'smooth' });
+      setTimeout(() => {
+        setIsPageLoading(false);
+      }, 300);
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 min-h-[calc(100vh-4rem)]">
       
@@ -307,117 +370,242 @@ const EmployerManageRequisitions = () => {
                   Clear Search
                 </button>
               </div>
+            ) : isPageLoading ? (
+              <div className="py-20 flex flex-col items-center justify-center gap-3 bg-white/80 backdrop-blur-xs rounded-3xl border border-slate-200/80 my-4 shadow-sm animate-in fade-in duration-150">
+                <div className="w-9 h-9 border-3 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                <p className="text-xs font-extrabold text-blue-700 animate-pulse">Loading Page {currentPage}...</p>
+              </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredList.map((reqItem) => {
-                  const storedUser = (() => {
-                    try { return JSON.parse(localStorage.getItem('workwise_user')); } catch (e) { return null; }
-                  })();
-                  const currentUserId = user?.id || user?._id || storedUser?.id || storedUser?._id;
-                  const isMine = user?.role === 'admin' || (reqItem.postedBy && String(reqItem.postedBy) === String(currentUserId));
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {paginatedList.map((reqItem) => {
+                    const storedUser = (() => {
+                      try { return JSON.parse(localStorage.getItem('workwise_user')); } catch (e) { return null; }
+                    })();
+                    const currentUserId = user?.id || user?._id || storedUser?.id || storedUser?._id;
+                    const isMine = user?.role === 'admin' || (reqItem.postedBy && String(reqItem.postedBy) === String(currentUserId));
 
-                  return (
-                    <div
-                      key={reqItem.requisitionId || reqItem._id}
-                      className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-md hover:border-blue-400 transition-all flex flex-col justify-between"
-                    >
-                      <div>
-                        {/* Header */}
-                        <div className="flex items-start justify-between gap-3 mb-3">
-                          <div>
-                            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 border border-blue-100 text-blue-700 text-xs font-bold rounded-lg mb-1">
-                              <FiBriefcase className="w-3.5 h-3.5 text-blue-600" />
-                              <span>{reqItem.companyName || 'Company'}</span>
+                    return (
+                      <div
+                        key={reqItem.requisitionId || reqItem._id}
+                        className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-md hover:border-blue-400 transition-all flex flex-col justify-between"
+                      >
+                        <div>
+                          {/* Header */}
+                          <div className="flex items-start justify-between gap-3 mb-3">
+                            <div>
+                              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 border border-blue-100 text-blue-700 text-xs font-bold rounded-lg mb-1">
+                                <FiBriefcase className="w-3.5 h-3.5 text-blue-600" />
+                                <span>{reqItem.companyName || 'Company'}</span>
+                              </div>
+                              <h3 title={reqItem.title} className="font-bold text-slate-900 text-base mt-1 leading-snug line-clamp-1">
+                                {reqItem.title}
+                              </h3>
+                              <span title={`Requisition ID: ${reqItem.requisitionId}`} className="text-[10px] text-slate-400 font-mono">
+                                ID: {reqItem.requisitionId}
+                              </span>
                             </div>
-                            <h3 title={reqItem.title} className="font-bold text-slate-900 text-base mt-1 leading-snug line-clamp-1">
-                              {reqItem.title}
-                            </h3>
-                            <span title={`Requisition ID: ${reqItem.requisitionId}`} className="text-[10px] text-slate-400 font-mono">
-                              ID: {reqItem.requisitionId}
+                          </div>
+
+                          {/* Badges */}
+                          <div className="flex flex-wrap items-center gap-1.5 mb-3 text-xs">
+                            <span className="px-2.5 py-0.5 bg-slate-100 text-slate-700 rounded-md font-semibold flex items-center gap-1">
+                              <FiMapPin className="w-3 h-3 text-slate-400" />
+                              {reqItem.location || 'Remote'}
+                            </span>
+                            <span className="px-2.5 py-0.5 bg-emerald-50 text-emerald-700 rounded-md font-semibold flex items-center gap-1">
+                              <FiDollarSign className="w-3 h-3 text-emerald-500" />
+                              {reqItem.budget || 'Negotiable'}
+                            </span>
+                            <span className="px-2.5 py-0.5 bg-indigo-50 text-indigo-700 rounded-md font-semibold">
+                              {reqItem.jobType || 'Full-Time'}
                             </span>
                           </div>
+
+                          {/* Tech Stack */}
+                          {Array.isArray(reqItem.techStack) && reqItem.techStack.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mb-3">
+                              {reqItem.techStack.map((tech, i) => (
+                                <span key={i} className="px-2 py-0.5 bg-blue-50/80 border border-blue-100 text-blue-700 text-[10px] font-bold rounded-md">
+                                  {tech}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+
+                          <p title={reqItem.description} className="text-slate-600 text-xs leading-relaxed line-clamp-3 mb-4">
+                            {reqItem.description}
+                          </p>
                         </div>
 
-                        {/* Badges */}
-                        <div className="flex flex-wrap items-center gap-1.5 mb-3 text-xs">
-                          <span className="px-2.5 py-0.5 bg-slate-100 text-slate-700 rounded-md font-semibold flex items-center gap-1">
-                            <FiMapPin className="w-3 h-3 text-slate-400" />
-                            {reqItem.location || 'Remote'}
-                          </span>
-                          <span className="px-2.5 py-0.5 bg-emerald-50 text-emerald-700 rounded-md font-semibold flex items-center gap-1">
-                            <FiDollarSign className="w-3 h-3 text-emerald-500" />
-                            {reqItem.budget || 'Negotiable'}
-                          </span>
-                          <span className="px-2.5 py-0.5 bg-indigo-50 text-indigo-700 rounded-md font-semibold">
-                            {reqItem.jobType || 'Full-Time'}
-                          </span>
+                        {/* Actions */}
+                        <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-2">
+                          <button
+                            onClick={() => navigate('/apply', { 
+                              state: { 
+                                companyId: reqItem.companyId || reqItem.requisitionId, 
+                                companyName: reqItem.companyName,
+                                jobTitle: reqItem.title 
+                              } 
+                            })}
+                            className="flex-1 py-2 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-blue-500/20 transition-all cursor-pointer"
+                          >
+                            <FiSend className="w-3.5 h-3.5" />
+                            <span>Apply Now</span>
+                          </button>
+
+                          {(() => {
+                            const reqId = reqItem.requisitionId || reqItem._id || reqItem.companyId;
+                            const isSaved = isJobSaved(reqId);
+                            return (
+                              <button
+                                onClick={() => isSaved ? removeSavedJob(reqId, reqItem.title) : saveJob(reqItem)}
+                                className={`py-2 px-3.5 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm ${
+                                  isSaved 
+                                    ? 'bg-amber-500 text-white shadow-amber-500/20 hover:bg-amber-600' 
+                                    : 'bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200/80'
+                                }`}
+                                title={isSaved ? "Saved in your list (Click to unsave)" : "Bookmark / Save Requisition"}
+                              >
+                                <FiBookmark className={`w-3.5 h-3.5 ${isSaved ? 'fill-white text-white' : 'text-amber-600'}`} />
+                                <span>{isSaved ? 'Saved' : 'Save'}</span>
+                              </button>
+                            );
+                          })()}
+
+                          {isMine && (
+                            <button
+                              onClick={() => handleDelete(reqItem.requisitionId, reqItem.title)}
+                              className="py-2 px-3 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                              title="Delete Requisition"
+                            >
+                              <FiTrash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                         </div>
+                      </div>
+                    );
+                  })}
+                </div>
 
-                        {/* Tech Stack */}
-                        {Array.isArray(reqItem.techStack) && reqItem.techStack.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mb-3">
-                            {reqItem.techStack.map((tech, i) => (
-                              <span key={i} className="px-2 py-0.5 bg-blue-50/80 border border-blue-100 text-blue-700 text-[10px] font-bold rounded-md">
-                                {tech}
-                              </span>
-                            ))}
-                          </div>
-                        )}
+                {/* Pagination Controls Bar */}
+                {totalItems > 0 && (
+                  <div className="mt-8 bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
+                    {/* Results Count Summary */}
+                    <span className="text-xs font-semibold text-slate-600">
+                      Showing <strong className="text-slate-900">{startIndex + 1}–{endIndex}</strong> of <strong className="text-slate-900">{totalItems}</strong> requisitions
+                      {searchQuery && <span className="text-slate-400 text-xs ml-1.5">(matching "{searchQuery}")</span>}
+                    </span>
 
-                        <p title={reqItem.description} className="text-slate-600 text-xs leading-relaxed line-clamp-3 mb-4">
-                          {reqItem.description}
-                        </p>
+                    {/* Navigation Chevrons & Page Indicator */}
+                    <div className="flex items-center gap-1.5">
+                      {/* First Page Double Chevron */}
+                      <button
+                        onClick={() => handlePageChange(1)}
+                        disabled={currentPage === 1}
+                        className="p-2 border border-slate-200 rounded-xl bg-white hover:bg-slate-50 text-slate-600 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer"
+                        title="First Page (Page 1)"
+                      >
+                        <FiChevronsLeft className="w-4 h-4" />
+                      </button>
+
+                      {/* Prev Page */}
+                      <button
+                        onClick={() => handlePageChange(currentPage - 1)}
+                        disabled={currentPage === 1}
+                        className="p-2 border border-slate-200 rounded-xl bg-white hover:bg-slate-50 text-slate-600 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer"
+                        title="Previous Page"
+                      >
+                        <FiChevronLeft className="w-4 h-4" />
+                      </button>
+
+                      {/* Page Numbers */}
+                      <div className="flex items-center gap-1 px-1">
+                        {Array.from({ length: totalPages }, (_, i) => i + 1)
+                          .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+                          .map((page, idx, arr) => {
+                            const prevPage = arr[idx - 1];
+                            const showEllipsis = prevPage && page - prevPage > 1;
+                            return (
+                              <React.Fragment key={page}>
+                                {showEllipsis && <span className="px-1 text-slate-400 text-xs font-bold">...</span>}
+                                <button
+                                  onClick={() => handlePageChange(page)}
+                                  className={`w-8 h-8 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                                    currentPage === page
+                                      ? 'bg-blue-600 text-white shadow-xs'
+                                      : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border border-slate-200'
+                                  }`}
+                                >
+                                  {page}
+                                </button>
+                              </React.Fragment>
+                            );
+                          })}
                       </div>
 
-                      {/* Actions */}
-                      <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-2">
+                      {/* Next Page */}
+                      <button
+                        onClick={() => handlePageChange(currentPage + 1)}
+                        disabled={currentPage === totalPages}
+                        className="p-2 border border-slate-200 rounded-xl bg-white hover:bg-slate-50 text-slate-600 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer"
+                        title="Next Page"
+                      >
+                        <FiChevronRight className="w-4 h-4" />
+                      </button>
+
+                      {/* Last Page Double Chevron */}
+                      <button
+                        onClick={() => handlePageChange(totalPages)}
+                        disabled={currentPage === totalPages}
+                        className="p-2 border border-slate-200 rounded-xl bg-white hover:bg-slate-50 text-slate-600 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer"
+                        title={`Last Page (Page ${totalPages})`}
+                      >
+                        <FiChevronsRight className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    {/* Jump to Page & Items Per Page Selector */}
+                    <div className="flex items-center gap-3 flex-wrap justify-center">
+                      <form onSubmit={handleJumpSubmit} className="flex items-center gap-1.5">
+                        <span className="text-xs font-semibold text-slate-500">Go to page:</span>
+                        <input
+                          type="number"
+                          min={1}
+                          max={totalPages}
+                          value={jumpPageInput}
+                          onChange={handleJumpInputChange}
+                          onBlur={handleJumpSubmit}
+                          placeholder={String(currentPage)}
+                          className="w-14 px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 text-center"
+                        />
                         <button
-                          onClick={() => navigate('/apply', { 
-                            state: { 
-                              companyId: reqItem.companyId || reqItem.requisitionId, 
-                              companyName: reqItem.companyName,
-                              jobTitle: reqItem.title 
-                            } 
-                          })}
-                          className="flex-1 py-2 px-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-blue-500/20 transition-all cursor-pointer"
+                          type="submit"
+                          className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-lg transition-colors cursor-pointer"
                         >
-                          <FiSend className="w-3.5 h-3.5" />
-                          <span>Apply Now</span>
+                          Go
                         </button>
+                      </form>
 
-                        {(() => {
-                          const reqId = reqItem.requisitionId || reqItem._id || reqItem.companyId;
-                          const isSaved = isJobSaved(reqId);
-                          return (
-                            <button
-                              onClick={() => isSaved ? removeSavedJob(reqId, reqItem.title) : saveJob(reqItem)}
-                              className={`py-2 px-3.5 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-sm ${
-                                isSaved 
-                                  ? 'bg-amber-500 text-white shadow-amber-500/20 hover:bg-amber-600' 
-                                  : 'bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-200/80'
-                              }`}
-                              title={isSaved ? "Saved in your list (Click to unsave)" : "Bookmark / Save Requisition"}
-                            >
-                              <FiBookmark className={`w-3.5 h-3.5 ${isSaved ? 'fill-white text-white' : 'text-amber-600'}`} />
-                              <span>{isSaved ? 'Saved' : 'Save'}</span>
-                            </button>
-                          );
-                        })()}
-
-                        {isMine && (
-                          <button
-                            onClick={() => handleDelete(reqItem.requisitionId, reqItem.title)}
-                            className="py-2 px-3 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
-                            title="Delete Requisition"
-                          >
-                            <FiTrash2 className="w-3.5 h-3.5" />
-                          </button>
-                        )}
+                      <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 border-l border-slate-200 pl-3">
+                        <span>Per Page:</span>
+                        <select
+                          value={itemsPerPage}
+                          onChange={(e) => {
+                            setItemsPerPage(Number(e.target.value));
+                            setCurrentPage(1);
+                          }}
+                          className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold text-slate-800 focus:outline-none cursor-pointer"
+                        >
+                          <option value={6}>6</option>
+                          <option value={12}>12</option>
+                          <option value={24}>24</option>
+                        </select>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
+                  </div>
+                )}
+              </>
             )}
           </>
         )}

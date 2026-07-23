@@ -5,6 +5,7 @@ import { Toaster } from 'sonner';
 import { AuthProvider } from './context/AuthContext';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
+import ScrollToTop from './components/ScrollToTop';
 import ProtectedRoute from './components/ProtectedRoute';
 import PublicRoute from './components/PublicRoute';
 import Home from './pages/Home';
@@ -28,6 +29,7 @@ import AccessDeniedPage from './pages/AccessDeniedPage';
 function App() {
   return (
     <Router>
+      <ScrollToTop />
       <AuthProvider>
         <Toaster richColors position="top-right" closeButton visibleToasts={3} duration={3000} />
         <div className="flex flex-col min-h-screen bg-slate-50">
