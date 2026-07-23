@@ -332,12 +332,31 @@ const Companies = () => {
     setJumpPageInput(String(currentPage));
   }, [currentPage]);
 
+  const handleJumpInputChange = (e) => {
+    const val = e.target.value;
+    if (val === '') {
+      setJumpPageInput('');
+      return;
+    }
+    const pageNum = parseInt(val, 10);
+    if (!isNaN(pageNum)) {
+      if (pageNum > totalPages) {
+        setJumpPageInput(String(totalPages));
+      } else {
+        setJumpPageInput(val);
+      }
+    } else {
+      setJumpPageInput(val);
+    }
+  };
+
   const handleJumpSubmit = (e) => {
     if (e) e.preventDefault();
     const pageNum = parseInt(jumpPageInput, 10);
     if (!isNaN(pageNum)) {
       const clampedPage = Math.max(1, Math.min(pageNum, totalPages));
       handlePageChange(clampedPage);
+      setJumpPageInput(String(clampedPage));
     } else {
       setJumpPageInput(String(currentPage));
     }
@@ -995,7 +1014,8 @@ const Companies = () => {
                     min={1}
                     max={totalPages}
                     value={jumpPageInput}
-                    onChange={(e) => setJumpPageInput(e.target.value)}
+                    onChange={handleJumpInputChange}
+                    onBlur={handleJumpSubmit}
                     placeholder={String(currentPage)}
                     className="w-14 px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 text-center"
                   />

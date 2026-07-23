@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from '../utils/toast';
 import { useCartStore } from '../store/useCartStore';
-import { FiTrash2, FiVideo, FiFileText, FiPlusCircle, FiAlertCircle } from 'react-icons/fi';
+import { FiTrash2, FiVideo, FiFileText, FiPlusCircle, FiAlertCircle, FiSearch, FiFilter, FiX, FiRefreshCw } from 'react-icons/fi';
 
 const Cart = () => {
   const cartItems = useCartStore((state) => state.cartItems);
@@ -12,6 +12,8 @@ const Cart = () => {
   const setCartItems = useCartStore((state) => state.setCartItems);
 
   const [error, setError] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All');
 
   const hasFetchedRef = React.useRef(false);
 
@@ -20,6 +22,32 @@ const Cart = () => {
     hasFetchedRef.current = true;
     fetchCart();
   }, []);
+
+  // Filtered applications based on search query & status filter
+  const filteredCartItems = useMemo(() => {
+    return cartItems.filter((item) => {
+      const term = searchQuery.toLowerCase().trim();
+      const companyName = (item.companyName || '').toLowerCase();
+      const applicantName = (item.name || '').toLowerCase();
+      const applicantEmail = (item.email || '').toLowerCase();
+      const companyId = (item.companyId || '').toLowerCase();
+      const itemStatus = (item.status || 'pending').toLowerCase();
+
+      const matchesSearch =
+        !term ||
+        companyName.includes(term) ||
+        applicantName.includes(term) ||
+        applicantEmail.includes(term) ||
+        companyId.includes(term) ||
+        itemStatus.includes(term);
+
+      const matchesStatus =
+        statusFilter === 'All' ||
+        itemStatus === statusFilter.toLowerCase();
+
+      return matchesSearch && matchesStatus;
+    });
+  }, [cartItems, searchQuery, statusFilter]);
 
   const handleRemoveItem = async (companyId) => {
     await removeItem(companyId);
@@ -47,15 +75,46 @@ const Cart = () => {
     }
   };
 
+  const getStatusBadge = (status) => {
+    const s = (status || 'pending').toLowerCase();
+    switch (s) {
+      case 'accepted':
+        return (
+          <span className="inline-flex items-center gap-1 text-xs font-extrabold px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-2xs">
+            <span>🎉</span> Accepted / Shortlisted
+          </span>
+        );
+      case 'submitted':
+        return (
+          <span className="inline-flex items-center gap-1 text-xs font-extrabold px-3 py-1 rounded-full bg-blue-100 text-blue-800 border border-blue-200 shadow-2xs">
+            <span>📋</span> Under Review
+          </span>
+        );
+      case 'rejected':
+        return (
+          <span className="inline-flex items-center gap-1 text-xs font-extrabold px-3 py-1 rounded-full bg-rose-100 text-rose-800 border border-rose-200 shadow-2xs">
+            <span>❌</span> Application Declined
+          </span>
+        );
+      case 'pending':
+      default:
+        return (
+          <span className="inline-flex items-center gap-1 text-xs font-extrabold px-3 py-1 rounded-full bg-amber-100 text-amber-800 border border-amber-200 shadow-2xs">
+            <span>⏳</span> Application Received
+          </span>
+        );
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 min-h-[calc(100vh-4rem)]">
       {/* Title */}
       <div className="text-center max-w-2xl mx-auto mb-12">
         <h1 className="text-4xl font-extrabold text-slate-900 tracking-tight">
-          Your Job Applications Cart
+          Your Job Applications & Pipeline Status
         </h1>
         <p className="mt-2 text-slate-500 text-sm">
-          Keep track of your active job submissions, view uploaded files, or initiate video interviews.
+          Track real-time status updates as recruiters review your application in their hiring pipeline.
         </p>
       </div>
 
@@ -97,19 +156,86 @@ const Cart = () => {
               </Link>
             </div>
           ) : (
-            <div className="space-y-8">
-              {/* Cards Grid */}
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {cartItems.map((item) => (
+            <div className="space-y-6">
+              {/* Search & Filter Bar */}
+              <div className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
+                {/* Search Input Box */}
+                <div className="relative w-full md:w-80">
+                  <FiSearch className="absolute left-3.5 top-3.5 text-slate-400 w-4 h-4" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search company, applicant, status..."
+                    className="w-full pl-10 pr-9 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all text-slate-800"
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 cursor-pointer"
+                    >
+                      <FiX className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Status Filter Pills */}
+                <div className="flex items-center gap-1.5 flex-wrap w-full md:w-auto">
+                  {['All', 'Pending', 'Submitted', 'Accepted', 'Rejected'].map((st) => (
+                    <button
+                      key={st}
+                      onClick={() => setStatusFilter(st)}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                        statusFilter === st
+                          ? 'bg-blue-600 text-white shadow-xs'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      {st === 'Submitted' ? 'Under Review' : st === 'Rejected' ? 'Declined' : st}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Count Badge */}
+                <span className="text-xs text-slate-500 font-bold shrink-0">
+                  Showing {filteredCartItems.length} of {cartItems.length} applications
+                </span>
+              </div>
+
+              {/* Grid or Empty Search State */}
+              {filteredCartItems.length === 0 ? (
+                <div className="bg-white border border-slate-200 rounded-3xl p-12 text-center max-w-md mx-auto my-8 space-y-3">
+                  <FiSearch className="w-10 h-10 text-slate-300 mx-auto" />
+                  <h3 className="font-bold text-slate-800 text-lg">No matching applications found</h3>
+                  <p className="text-xs text-slate-400">
+                    No active application matches your search filter "{searchQuery || statusFilter}".
+                  </p>
+                  <button
+                    onClick={() => {
+                      setSearchQuery('');
+                      setStatusFilter('All');
+                    }}
+                    className="mt-2 inline-flex items-center gap-1.5 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                  >
+                    <FiRefreshCw className="w-3.5 h-3.5" />
+                    Reset Search & Filters
+                  </button>
+                </div>
+              ) : (
+                /* Cards Grid */
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {filteredCartItems.map((item) => (
                   <div
                     key={item._id}
                     className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 flex flex-col justify-between hover:shadow-md hover:border-slate-200 transition-all duration-200"
                   >
                     <div>
-                      <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-blue-50 text-blue-600 mb-4 inline-block">
-                        Active Application
-                      </span>
-                      <h3 className="text-xl font-bold text-slate-800 tracking-tight mb-2 truncate">
+                      <div className="flex items-center justify-between gap-2 mb-4">
+                        {getStatusBadge(item.status)}
+                        <span className="text-[10px] text-slate-400 font-semibold">Live Status</span>
+                      </div>
+
+                      <h3 className="text-xl font-bold text-slate-800 tracking-tight mb-1 truncate">
                         {item.companyName}
                       </h3>
                       <p className="text-xs text-slate-400 font-medium mb-4">Ref ID: {item.companyId}</p>
@@ -117,12 +243,18 @@ const Cart = () => {
                       <div className="space-y-2 border-t border-slate-100 pt-4 mb-5 text-sm text-slate-600 font-medium">
                         <div className="flex justify-between">
                           <span className="text-slate-400">Applicant:</span>
-                          <span className="text-slate-700">{item.name}</span>
+                          <span className="text-slate-700 font-bold">{item.name}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-slate-400">Email:</span>
                           <span className="text-slate-700 truncate max-w-[160px]" title={item.email}>
                             {item.email}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center pt-1">
+                          <span className="text-slate-400">Pipeline Stage:</span>
+                          <span className="text-xs font-extrabold uppercase px-2 py-0.5 rounded-md bg-slate-100 text-slate-700">
+                            {item.status || 'pending'}
                           </span>
                         </div>
                       </div>
@@ -163,6 +295,7 @@ const Cart = () => {
                   </div>
                 ))}
               </div>
+              )}
 
               {/* Action Buttons */}
               <div className="flex flex-wrap justify-center gap-4 border-t border-slate-100 pt-8 max-w-md mx-auto">

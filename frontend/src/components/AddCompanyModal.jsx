@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { FiX, FiBriefcase, FiMapPin, FiDollarSign, FiCode, FiLayers, FiCheckCircle } from 'react-icons/fi';
 import { toast } from '../utils/toast';
 import { useAuth } from '../context/AuthContext';
+import SearchableIndustrySelect from './SearchableIndustrySelect';
 
 const AddCompanyModal = ({ isOpen, onClose, onCompanyAdded }) => {
   const { user } = useAuth();
@@ -141,24 +142,13 @@ const AddCompanyModal = ({ isOpen, onClose, onCompanyAdded }) => {
               <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">
                 Industry / Category <span className="text-rose-500">*</span>
               </label>
-              <div className="relative">
-                <FiLayers className="absolute left-3 top-3 text-slate-400 w-4 h-4" />
-                <select
-                  name="industry"
-                  value={formData.industry}
-                  onChange={handleChange}
-                  className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all appearance-none"
-                >
-                  <option value="Frontend">Frontend Development</option>
-                  <option value="Backend">Backend Engineering</option>
-                  <option value="Fullstack">Full Stack Engineering</option>
-                  <option value="DevOps & Cloud">DevOps & Cloud</option>
-                  <option value="AI & Machine Learning">AI & Machine Learning</option>
-                  <option value="Mobile Development">Mobile Development</option>
-                  <option value="UI/UX Design">UI/UX Design</option>
-                  <option value="Technology & SaaS">Technology & SaaS</option>
-                </select>
-              </div>
+              <SearchableIndustrySelect
+                name="industry"
+                value={formData.industry}
+                onChange={handleChange}
+                placeholder="Search or type custom industry..."
+                theme="blue"
+              />
             </div>
           </div>
 

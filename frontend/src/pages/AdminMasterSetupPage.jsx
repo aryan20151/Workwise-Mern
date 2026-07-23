@@ -8,6 +8,7 @@ import {
   FiEdit3, FiTrash2, FiX, FiSave, FiRotateCcw, FiEye, FiEyeOff,
   FiSearch, FiChevronDown, FiChevronUp, FiCheck
 } from 'react-icons/fi';
+import SearchableIndustrySelect from '../components/SearchableIndustrySelect';
 
 const AdminMasterSetupPage = () => {
   const navigate = useNavigate();
@@ -619,13 +620,12 @@ const AdminMasterSetupPage = () => {
                   <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
                     Industry Sector
                   </label>
-                  <input
-                    type="text"
+                  <SearchableIndustrySelect
                     name="industry"
                     value={formData.industry}
                     onChange={handleChange}
-                    placeholder="e.g. Fintech, SaaS, AI"
-                    className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-purple-600 focus:bg-white transition-all"
+                    placeholder="Search or type custom industry..."
+                    theme="purple"
                   />
                 </div>
               </div>

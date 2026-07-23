@@ -7,6 +7,7 @@ import {
   FiBriefcase, FiPlus, FiEdit3, FiTrash2, FiSearch, FiMapPin, 
   FiDollarSign, FiCode, FiLayers, FiCheckCircle, FiRefreshCw, FiArrowLeft, FiAlertCircle, FiColumns, FiSliders
 } from 'react-icons/fi';
+import SearchableIndustrySelect from '../components/SearchableIndustrySelect';
 
 const EmployerManageCompanies = () => {
   const navigate = useNavigate();
@@ -14,7 +15,7 @@ const EmployerManageCompanies = () => {
 
   const [companies, setCompanies] = useState([]);
   const [myCompanies, setMyCompanies] = useState([]);
-  const [listingFilter, setListingFilter] = useState('my'); // 'my' or 'all'
+  const [listingFilter, setListingFilter] = useState('all'); // Default to 'all' so Admin and users see all postings
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -191,7 +192,7 @@ const EmployerManageCompanies = () => {
   };
 
   // Filtered List based on tab selection ('my' vs 'all')
-  const targetList = listingFilter === 'my' ? myCompanies : companies;
+  const targetList = (user?.role === 'admin' || listingFilter === 'all') ? companies : myCompanies;
   const filteredList = targetList.filter((c) => {
     const term = searchQuery.toLowerCase().trim();
     if (!term) return true;
@@ -298,24 +299,13 @@ const EmployerManageCompanies = () => {
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-2">
                   Category / Industry Sector <span className="text-rose-500">*</span>
                 </label>
-                <div className="relative">
-                  <FiLayers className="absolute left-3.5 top-3.5 text-slate-400 w-4 h-4" />
-                  <select
-                    name="industry"
-                    value={formData.industry}
-                    onChange={handleChange}
-                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-blue-600 focus:bg-white transition-all appearance-none"
-                  >
-                    <option value="Frontend">Frontend Development</option>
-                    <option value="Backend">Backend Engineering</option>
-                    <option value="Fullstack">Full Stack Engineering</option>
-                    <option value="DevOps & Cloud">DevOps & Cloud</option>
-                    <option value="AI & Machine Learning">AI & Machine Learning</option>
-                    <option value="Mobile Development">Mobile Development</option>
-                    <option value="UI/UX Design">UI/UX Design</option>
-                    <option value="Technology & SaaS">Technology & SaaS</option>
-                  </select>
-                </div>
+                <SearchableIndustrySelect
+                  name="industry"
+                  value={formData.industry}
+                  onChange={handleChange}
+                  placeholder="Search or type custom industry..."
+                  theme="blue"
+                />
               </div>
             </div>
 
@@ -441,10 +431,10 @@ const EmployerManageCompanies = () => {
         /* List View of All Listings */
         <div className="space-y-6 animate-in fade-in duration-200">
           
-          {/* Listing Filter Tabs: Admin sees All; Employer only sees My Company */}
-          {user?.role === 'admin' && (
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6 bg-slate-100/80 p-2 rounded-2xl border border-slate-200">
-              <div className="flex items-center gap-2 w-full sm:w-auto">
+          {/* Listing Filter Tabs */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6 bg-slate-100/80 p-2 rounded-2xl border border-slate-200">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              {user?.role !== 'admin' && (
                 <button
                   onClick={() => setListingFilter('my')}
                   className={`flex-1 sm:flex-none px-5 py-2.5 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-2 cursor-pointer ${
@@ -455,22 +445,22 @@ const EmployerManageCompanies = () => {
                 >
                   <span>📌 My Postings ({myCompanies.length})</span>
                 </button>
-                <button
-                  onClick={() => setListingFilter('all')}
-                  className={`flex-1 sm:flex-none px-5 py-2.5 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-2 cursor-pointer ${
-                    listingFilter === 'all'
-                      ? 'bg-white text-blue-700 shadow-md border border-slate-200/80'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
-                  }`}
-                >
-                  <span>🌐 All Platform Postings ({companies.length})</span>
-                </button>
-              </div>
-              <span className="text-xs text-slate-500 font-semibold px-2">
-                Showing {filteredList.length} {listingFilter === 'my' ? 'of your listings' : 'total listings'}
-              </span>
+              )}
+              <button
+                onClick={() => setListingFilter('all')}
+                className={`flex-1 sm:flex-none px-5 py-2.5 rounded-xl text-xs font-extrabold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                  listingFilter === 'all' || user?.role === 'admin'
+                    ? 'bg-white text-blue-700 shadow-md border border-slate-200/80'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                }`}
+              >
+                <span>🌐 All Platform Postings ({companies.length})</span>
+              </button>
             </div>
-          )}
+            <span className="text-xs text-slate-500 font-semibold px-2">
+              Showing {filteredList.length} total platform listings
+            </span>
+          </div>
 
           {/* Search Bar */}
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
