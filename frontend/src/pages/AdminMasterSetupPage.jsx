@@ -1,17 +1,19 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '../utils/toast';
 import { useAuth } from '../context/AuthContext';
 import { 
   FiShield, FiUserPlus, FiBriefcase, FiMail, FiLock, FiUser, 
   FiMapPin, FiDollarSign, FiCheckCircle, FiAlertCircle, FiArrowLeft, FiRefreshCw,
-  FiEdit3, FiTrash2, FiX, FiSave, FiRotateCcw, FiEye, FiEyeOff
+  FiEdit3, FiTrash2, FiX, FiSave, FiRotateCcw, FiEye, FiEyeOff,
+  FiSearch, FiChevronDown, FiChevronUp, FiCheck
 } from 'react-icons/fi';
 
 const AdminMasterSetupPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const formRef = useRef(null);
+  const companyDropdownRef = useRef(null);
 
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
@@ -34,6 +36,10 @@ const AdminMasterSetupPage = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+
+  // States for Searchable & Alphabetically Sorted Company Dropdown
+  const [isCompanyDropdownOpen, setIsCompanyDropdownOpen] = useState(false);
+  const [companySearchQuery, setCompanySearchQuery] = useState('');
 
   // Fetch all companies & registered employers
   const fetchMasterData = async () => {
@@ -72,12 +78,48 @@ const AdminMasterSetupPage = () => {
     fetchMasterData();
   }, []);
 
-  const handleSelectCompanyDropdown = (e) => {
-    const selectedVal = e.target.value;
-    if (!selectedVal) return;
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (companyDropdownRef.current && !companyDropdownRef.current.contains(event.target)) {
+        setIsCompanyDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
-    const selectedComp = provisionedList.find(c => (c.companyId && c.companyId === selectedVal) || c.name === selectedVal);
-    if (selectedComp) {
+  // Sort companies alphabetically by company name
+  const sortedProvisionedList = useMemo(() => {
+    return [...provisionedList].sort((a, b) => 
+      (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' })
+    );
+  }, [provisionedList]);
+
+  // Filter companies based on search input
+  const filteredDropdownCompanies = useMemo(() => {
+    if (!companySearchQuery.trim()) return sortedProvisionedList;
+    const term = companySearchQuery.toLowerCase().trim();
+    return sortedProvisionedList.filter(c => {
+      const name = (c.name || '').toLowerCase();
+      const ind = (c.industry || '').toLowerCase();
+      const hq = (c.headquarters || '').toLowerCase();
+      return name.includes(term) || ind.includes(term) || hq.includes(term);
+    });
+  }, [sortedProvisionedList, companySearchQuery]);
+
+  const handleSelectCompany = (selectedComp) => {
+    if (!selectedComp) {
+      setFormData(prev => ({
+        ...prev,
+        companyName: '',
+        industry: 'Technology',
+        headquarters: '',
+        budget: '',
+        description: ''
+      }));
+      setEditingCompanyId(null);
+    } else {
       setFormData(prev => ({
         ...prev,
         companyName: selectedComp.name || '',
@@ -90,6 +132,8 @@ const AdminMasterSetupPage = () => {
         setEditingCompanyId(selectedComp.companyId);
       }
     }
+    setIsCompanyDropdownOpen(false);
+    setCompanySearchQuery('');
   };
 
   const handleChange = (e) => {
@@ -441,24 +485,115 @@ const AdminMasterSetupPage = () => {
                 </span>
               </h3>
 
-              {/* Company API Dropdown Selector */}
-              <div>
+              {/* Searchable & Alphabetically Sorted Company Dropdown */}
+              <div className="relative" ref={companyDropdownRef}>
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5 flex items-center justify-between">
                   <span>Assign Existing Company (API)</span>
-                  <span className="text-[10px] text-purple-600 font-semibold lowercase">({provisionedList.length} companies loaded)</span>
+                  <span className="text-[10px] text-purple-600 font-semibold lowercase">
+                    ({sortedProvisionedList.length} loaded • Alphabetical)
+                  </span>
                 </label>
-                <select
-                  onChange={handleSelectCompanyDropdown}
-                  value=""
-                  className="w-full px-4 py-2.5 bg-purple-50/50 border border-purple-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-purple-600 focus:bg-white transition-all text-slate-800 cursor-pointer"
+
+                {/* Dropdown Toggle Button */}
+                <button
+                  type="button"
+                  onClick={() => setIsCompanyDropdownOpen(!isCompanyDropdownOpen)}
+                  className="w-full px-4 py-2.5 bg-purple-50/50 hover:bg-purple-100/50 border border-purple-200 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-purple-600 focus:bg-white transition-all text-slate-800 flex items-center justify-between cursor-pointer"
                 >
-                  <option value="">-- Select an Existing Company to Auto-Fill & Assign --</option>
-                  {provisionedList.map((comp) => (
-                    <option key={comp.companyId || comp._id || comp.name} value={comp.companyId || comp.name}>
-                      🏢 {comp.name} {comp.industry ? `(${comp.industry})` : ''} {comp.headquarters ? `- ${comp.headquarters}` : ''}
-                    </option>
-                  ))}
-                </select>
+                  <div className="flex items-center gap-2 truncate">
+                    <FiBriefcase className="w-4 h-4 text-purple-600 shrink-0" />
+                    <span className="truncate">
+                      {formData.companyName ? (
+                        <span className="font-bold text-slate-900">🏢 {formData.companyName}</span>
+                      ) : (
+                        <span className="text-slate-500">-- Search & Select an Existing Company --</span>
+                      )}
+                    </span>
+                  </div>
+                  {isCompanyDropdownOpen ? (
+                    <FiChevronUp className="w-4 h-4 text-purple-600 shrink-0 ml-2" />
+                  ) : (
+                    <FiChevronDown className="w-4 h-4 text-purple-600 shrink-0 ml-2" />
+                  )}
+                </button>
+
+                {/* Searchable Dropdown Popover Menu */}
+                {isCompanyDropdownOpen && (
+                  <div className="absolute left-0 right-0 top-full mt-1.5 bg-white border border-purple-200 rounded-2xl shadow-2xl z-50 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150">
+                    {/* Search Input Field */}
+                    <div className="p-2.5 border-b border-purple-100 bg-purple-50/40 sticky top-0">
+                      <div className="relative">
+                        <FiSearch className="absolute left-3 top-3 text-purple-500 w-4 h-4" />
+                        <input
+                          type="text"
+                          value={companySearchQuery}
+                          onChange={(e) => setCompanySearchQuery(e.target.value)}
+                          placeholder="Search company by name, industry, location..."
+                          className="w-full pl-9 pr-8 py-2 bg-white border border-purple-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-purple-600"
+                          autoFocus
+                        />
+                        {companySearchQuery && (
+                          <button
+                            type="button"
+                            onClick={() => setCompanySearchQuery('')}
+                            className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600"
+                          >
+                            <FiX className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Filtered Company List */}
+                    <div className="max-h-60 overflow-y-auto p-1.5 space-y-1">
+                      {formData.companyName && (
+                        <button
+                          type="button"
+                          onClick={() => handleSelectCompany(null)}
+                          className="w-full px-3 py-2 text-left text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-xl transition-colors flex items-center gap-2 cursor-pointer"
+                        >
+                          <FiX className="w-3.5 h-3.5" />
+                          <span>Clear Selection (Custom Entry)</span>
+                        </button>
+                      )}
+
+                      {filteredDropdownCompanies.length === 0 ? (
+                        <div className="p-4 text-center text-xs text-slate-400 font-medium">
+                          No matching companies found for "{companySearchQuery}"
+                        </div>
+                      ) : (
+                        filteredDropdownCompanies.map((comp) => {
+                          const isSelected = formData.companyName === comp.name;
+                          return (
+                            <button
+                              key={comp.companyId || comp._id || comp.name}
+                              type="button"
+                              onClick={() => handleSelectCompany(comp)}
+                              className={`w-full px-3.5 py-2.5 text-left rounded-xl text-xs transition-all flex items-center justify-between cursor-pointer ${
+                                isSelected
+                                  ? 'bg-purple-600 text-white font-bold shadow-xs'
+                                  : 'hover:bg-purple-50 text-slate-700 hover:text-purple-900 font-medium'
+                              }`}
+                            >
+                              <div className="truncate flex items-center gap-2">
+                                <span className="shrink-0">🏢</span>
+                                <div className="truncate">
+                                  <span className="font-bold">{comp.name}</span>
+                                  {(comp.industry || comp.headquarters) && (
+                                    <span className={`ml-1.5 text-[11px] ${isSelected ? 'text-purple-100' : 'text-slate-400'}`}>
+                                      ({[comp.industry, comp.headquarters].filter(Boolean).join(' • ')})
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              {isSelected && <FiCheck className="w-4 h-4 shrink-0 text-white" />}
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

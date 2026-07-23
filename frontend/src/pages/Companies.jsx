@@ -6,7 +6,8 @@ import { useAuth } from '../context/AuthContext';
 import AddCompanyModal from '../components/AddCompanyModal';
 import { 
   FiSearch, FiMapPin, FiBriefcase, FiChevronDown, FiChevronUp, 
-  FiFilter, FiX, FiDollarSign, FiClock, FiUserCheck, FiChevronLeft, FiChevronRight, FiRotateCcw, FiSliders, FiZap, FiArrowRight, FiSend, FiFileText, FiUpload, FiPlus
+  FiFilter, FiX, FiDollarSign, FiClock, FiUserCheck, FiChevronLeft, FiChevronRight, 
+  FiChevronsLeft, FiChevronsRight, FiRotateCcw, FiSliders, FiZap, FiArrowRight, FiSend, FiFileText, FiUpload, FiPlus
 } from 'react-icons/fi';
 
 const Companies = () => {
@@ -101,6 +102,7 @@ const Companies = () => {
   // Pagination States
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(6);
+  const [jumpPageInput, setJumpPageInput] = useState('1');
 
   const hasFetchedRef = React.useRef(false);
 
@@ -324,6 +326,22 @@ const Companies = () => {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = Math.min(startIndex + itemsPerPage, totalItems);
   const currentCompanies = filteredCompanies.slice(startIndex, endIndex);
+
+  // Keep jump input in sync with currentPage
+  useEffect(() => {
+    setJumpPageInput(String(currentPage));
+  }, [currentPage]);
+
+  const handleJumpSubmit = (e) => {
+    if (e) e.preventDefault();
+    const pageNum = parseInt(jumpPageInput, 10);
+    if (!isNaN(pageNum)) {
+      const clampedPage = Math.max(1, Math.min(pageNum, totalPages));
+      handlePageChange(clampedPage);
+    } else {
+      setJumpPageInput(String(currentPage));
+    }
+  };
 
   const handlePageChange = (newPage) => {
     if (newPage >= 1 && newPage <= totalPages) {
@@ -899,30 +917,47 @@ const Companies = () => {
             </div>
           )}
 
-          {/* Pagination Controls */}
+          {/* Enhanced Pagination Controls with Double Chevrons & Page Jump Input */}
           {totalPages > 1 && (
-            <div className="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-slate-200 pt-6">
-              <div className="text-xs font-semibold text-slate-500">
-                Page <span className="text-slate-900 font-bold">{currentPage}</span> of <span className="text-slate-900 font-bold">{totalPages}</span>
+            <div className="mt-8 flex flex-col lg:flex-row items-center justify-between gap-4 border-t border-slate-200 pt-6">
+              {/* Page Indicator */}
+              <div className="text-xs font-semibold text-slate-500 flex items-center gap-1">
+                <span>Page</span>
+                <span className="text-slate-900 font-bold">{currentPage}</span>
+                <span>of</span>
+                <span className="text-slate-900 font-bold">{totalPages}</span>
               </div>
 
-              <div className="flex items-center gap-1.5">
+              {/* Navigation Controls with Double Chevrons */}
+              <div className="flex items-center gap-1.5 flex-wrap justify-center">
+                {/* First Page Double Chevron Left */}
+                <button
+                  onClick={() => handlePageChange(1)}
+                  disabled={currentPage === 1}
+                  className="p-2 border border-slate-200 rounded-xl bg-white hover:bg-slate-50 text-slate-600 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-2xs cursor-pointer"
+                  title="First Page (Page 1)"
+                >
+                  <FiChevronsLeft className="w-4 h-4" />
+                </button>
+
+                {/* Previous Page Chevron Left */}
                 <button
                   onClick={() => handlePageChange(currentPage - 1)}
                   disabled={currentPage === 1}
-                  className="p-2 border border-slate-200 rounded-xl bg-white hover:bg-slate-50 text-slate-600 disabled:opacity-40 transition-colors"
+                  className="p-2 border border-slate-200 rounded-xl bg-white hover:bg-slate-50 text-slate-600 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-2xs cursor-pointer"
                   title="Previous Page"
                 >
                   <FiChevronLeft className="w-4 h-4" />
                 </button>
 
+                {/* Page Number Buttons */}
                 {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => (
                   <button
                     key={page}
                     onClick={() => handlePageChange(page)}
-                    className={`w-8 h-8 text-xs font-bold rounded-lg transition-all ${
+                    className={`w-8 h-8 text-xs font-bold rounded-xl transition-all cursor-pointer ${
                       currentPage === page
-                        ? 'bg-blue-600 text-white shadow-sm'
+                        ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20 scale-105'
                         : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
                     }`}
                   >
@@ -930,30 +965,63 @@ const Companies = () => {
                   </button>
                 ))}
 
+                {/* Next Page Chevron Right */}
                 <button
                   onClick={() => handlePageChange(currentPage + 1)}
                   disabled={currentPage === totalPages}
-                  className="p-2 border border-slate-200 rounded-xl bg-white hover:bg-slate-50 text-slate-600 disabled:opacity-40 transition-colors"
+                  className="p-2 border border-slate-200 rounded-xl bg-white hover:bg-slate-50 text-slate-600 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-2xs cursor-pointer"
                   title="Next Page"
                 >
                   <FiChevronRight className="w-4 h-4" />
                 </button>
+
+                {/* Last Page Double Chevron Right */}
+                <button
+                  onClick={() => handlePageChange(totalPages)}
+                  disabled={currentPage === totalPages}
+                  className="p-2 border border-slate-200 rounded-xl bg-white hover:bg-slate-50 text-slate-600 disabled:opacity-30 disabled:cursor-not-allowed transition-all shadow-2xs cursor-pointer"
+                  title={`Last Page (Page ${totalPages})`}
+                >
+                  <FiChevronsRight className="w-4 h-4" />
+                </button>
               </div>
 
-              <div className="flex items-center gap-2 text-xs font-semibold text-slate-500">
-                <span>Per Page:</span>
-                <select
-                  value={itemsPerPage}
-                  onChange={(e) => {
-                    setItemsPerPage(Number(e.target.value));
-                    setCurrentPage(1);
-                  }}
-                  className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold text-slate-800 focus:outline-none"
-                >
-                  <option value={6}>6</option>
-                  <option value={9}>9</option>
-                  <option value={12}>12</option>
-                </select>
+              {/* Jump to Page Search Form & Per Page Selector */}
+              <div className="flex items-center gap-3 flex-wrap justify-center">
+                <form onSubmit={handleJumpSubmit} className="flex items-center gap-1.5">
+                  <span className="text-xs font-semibold text-slate-500">Go to page:</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={totalPages}
+                    value={jumpPageInput}
+                    onChange={(e) => setJumpPageInput(e.target.value)}
+                    placeholder={String(currentPage)}
+                    className="w-14 px-2 py-1 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-600 text-center"
+                  />
+                  <button
+                    type="submit"
+                    className="px-2.5 py-1 bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold rounded-lg transition-colors cursor-pointer"
+                  >
+                    Go
+                  </button>
+                </form>
+
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 border-l border-slate-200 pl-3">
+                  <span>Per Page:</span>
+                  <select
+                    value={itemsPerPage}
+                    onChange={(e) => {
+                      setItemsPerPage(Number(e.target.value));
+                      setCurrentPage(1);
+                    }}
+                    className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-bold text-slate-800 focus:outline-none cursor-pointer"
+                  >
+                    <option value={6}>6</option>
+                    <option value={9}>9</option>
+                    <option value={12}>12</option>
+                  </select>
+                </div>
               </div>
             </div>
           )}
