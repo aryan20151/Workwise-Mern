@@ -11,9 +11,9 @@ const User = require('./models/User');
 // Helper to seed and sync admin user strictly from environment variables (.env)
 const seedAdminUser = async () => {
     try {
-        const adminEmail = process.env.ADMIN_EMAIL || 'admin@workwise.com';
-        const adminPassword = process.env.ADMIN_PASSWORD || 'admin123';
-        const adminUsername = process.env.ADMIN_USERNAME || 'admin';
+        const adminEmail = process.env.ADMIN_EMAIL;
+        const adminPassword = process.env.ADMIN_PASSWORD;
+        const adminUsername = process.env.ADMIN_USERNAME;
 
         let adminUser = await User.findOne({ role: 'admin' });
         if (!adminUser) {
