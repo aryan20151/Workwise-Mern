@@ -286,7 +286,7 @@ const EmployerManageCompanies = () => {
 
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
-            <span className="px-3 py-1 bg-white/10 rounded-lg text-xs font-bold">My Postings: {myCompanies.length}</span>
+            {/* <span className="px-3 py-1 bg-white/10 rounded-lg text-xs font-bold">My Postings: {myCompanies.length}</span> */}
             <span className="px-3 py-1 bg-white/10 rounded-lg text-xs font-bold">Total Platform: {companies.length}</span>
           </div>
           {/* <button

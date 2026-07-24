@@ -1119,10 +1119,10 @@ const Companies = () => {
 
       {/* Quick Application Modal */}
       {quickApplyCompany && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-lg w-full p-6 sm:p-8 relative overflow-hidden animate-in zoom-in-95 duration-200">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200 flex min-h-full items-center justify-center p-4 sm:p-6">
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl max-w-lg w-full p-6 sm:p-8 relative overflow-hidden animate-in zoom-in-95 duration-200 my-auto max-h-[85vh] sm:max-h-[90vh] flex flex-col">
             {/* Top Banner */}
-            <div className="flex items-start justify-between pb-4 border-b border-slate-100 mb-5">
+            <div className="flex items-start justify-between pb-4 border-b border-slate-100 mb-5 shrink-0">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-2xl bg-blue-600 text-white font-extrabold flex items-center justify-center text-lg shadow-md shadow-blue-600/20 shrink-0">
                   {(quickApplyCompany.name || 'C').charAt(0).toUpperCase()}
@@ -1146,7 +1146,7 @@ const Companies = () => {
             </div>
 
             {/* Form */}
-            <form onSubmit={handleQuickApplySubmit} className="space-y-4">
+            <form onSubmit={handleQuickApplySubmit} className="space-y-4 overflow-y-auto flex-1 pr-1">
               <div>
                 <label className="block text-xs font-bold uppercase tracking-wider text-slate-600 mb-1 flex items-center justify-between">
                   <span>Full Name <span className="text-rose-500">*</span></span>

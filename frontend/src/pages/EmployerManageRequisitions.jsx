@@ -401,9 +401,6 @@ const EmployerManageRequisitions = () => {
                               <h3 title={reqItem.title} className="font-bold text-slate-900 text-base mt-1 leading-snug line-clamp-1">
                                 {reqItem.title}
                               </h3>
-                              <span title={`Requisition ID: ${reqItem.requisitionId}`} className="text-[10px] text-slate-400 font-mono">
-                                ID: {reqItem.requisitionId}
-                              </span>
                             </div>
                           </div>
 

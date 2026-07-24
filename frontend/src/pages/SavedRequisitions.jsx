@@ -156,9 +156,6 @@ const SavedRequisitions = () => {
                       <h3 className="font-bold text-slate-900 text-base leading-snug line-clamp-1">
                         {item.title}
                       </h3>
-                      <span className="text-[10px] text-slate-400 font-mono">
-                        ID: {item.requisitionId}
-                      </span>
                     </div>
                   </div>
 

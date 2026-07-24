@@ -51,8 +51,8 @@ const RoleSelectionModal = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70 backdrop-blur-md animate-fadeIn">
-      <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-xl w-full p-8 relative overflow-hidden transform transition-all">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/70 backdrop-blur-md animate-fadeIn flex min-h-full items-center justify-center p-4 sm:p-6">
+      <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-xl w-full p-6 sm:p-8 relative my-auto max-h-[85vh] sm:max-h-[90vh] overflow-y-auto transform transition-all">
         
         {/* Background Decorative Accents */}
         <div className="absolute -top-16 -right-16 w-48 h-48 bg-gradient-to-br from-blue-400/20 to-indigo-500/20 rounded-full blur-2xl pointer-events-none" />
